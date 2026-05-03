@@ -7,11 +7,20 @@
         </div>
         <div class="card-body">
           <p>前面的区域，以后再来探索吧！</p>
+          <button class="btn-test-confetti" @click="triggerConfetti('恭喜你', '恭喜你，你被我恭喜到了')">
+            千万别点
+          </button>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import { useConfetti } from '../composables/useConfetti.js'
+
+const { triggerConfetti } = useConfetti()
+</script>
 
 <style scoped>
 .dashboard-container {
@@ -55,8 +64,24 @@
 
 .card-body p {
   color: var(--secondary-text-color);
-  margin: 0;
+  margin: 0 0 16px 0;
   line-height: 1.5;
+}
+
+.btn-test-confetti {
+  padding: 10px 24px;
+  background-color: var(--theme-color);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-test-confetti:hover {
+  opacity: 0.85;
 }
 
 @media (max-width: 768px) {

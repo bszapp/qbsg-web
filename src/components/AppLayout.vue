@@ -123,6 +123,7 @@
   <AuthGateModal :show="showAuthModal" :mode="authMode" @close="handleAuthModalClose"
     @switch-mode="authMode = $event" />
 
+  <ConfettiOverlay />
   <ToastNotification />
 
   <!-- 主内容区 -->
@@ -136,7 +137,8 @@
 
         <div v-else-if="showAuthRequired" key="auth-required" class="auth-state-card">
           <div class="auth-required-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round">
               <rect x="5" y="11" width="14" height="10" rx="2" />
               <path d="M8 11V8a4 4 0 1 1 8 0v3" />
             </svg>
@@ -163,6 +165,7 @@ import { navItems } from '../router/index.js'
 import ToastNotification from './ToastNotification.vue'
 import AuthGateModal from './AuthGateModal.vue'
 import { useAuth } from '../composables/useAuth.js'
+import ConfettiOverlay from './ConfettiOverlay.vue'
 
 // ---- 站点配置 ----
 const siteName = '签变时光'
@@ -198,6 +201,13 @@ const {
   state,
 } = useAuth()
 
+const hasPreviousInternalRoute = ref(false)
+router.beforeEach((to, from) => {
+  if (from.name !== undefined) {
+    hasPreviousInternalRoute.value = true
+  }
+})
+
 function isActive(path) {
   const activePath = route.meta.navPath || route.path
 
@@ -226,15 +236,9 @@ function handleAuthModalClose() {
   authMode.value = 'login'
   redirectBackOnClose.value = false
 
-  // 关闭弹窗且仍未登录时：
-  // 判断上一个页面的 URL（# 之前的部分）是否和当前页面相同。
-  // 相同 → 说明是同一个 SPA 内前进来的，正常 back()
-  // 不同 → 说明是直接从外部链接进入的，back() 会离开当前站，
-  //         改为跳到当前 URL 去掉 # 之后的地址（SPA 根路径）
   if (shouldRedirectBack && !isAuthenticated.value) {
     const currentBase = window.location.href.split('#')[0]
-    const referrer = document.referrer
-    if (referrer && referrer.split('#')[0] === currentBase) {
+    if (hasPreviousInternalRoute.value) {
       router.back()
     } else {
       window.location.replace(currentBase + '#/')
