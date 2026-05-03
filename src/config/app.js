@@ -1,10 +1,9 @@
 // 站点部署目录。放根目录就填 '/'，放 /new/ 就填 '/new/'。
 export const APP_BASE_PATH = '/new/'
 
-// 本地调试时指向正式服务器；部署到同源环境时改成 '' 即可。
-export const API_BASE_URL = ''//'https://qbsg.top'
 
 export function buildApiUrl(path = '') {
+  const API_BASE_URL = (location.hostname == 'localhost') ? 'https://qbsg.top' : ''
   if (!API_BASE_URL) {
     return path
   }
