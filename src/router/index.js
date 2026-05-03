@@ -34,17 +34,20 @@ const Account = () => import('../views/Account.vue')
 const More = () => import('../views/More.vue')
 
 export const navItems = [
-  { path: '/', name: 'dashboard', label: '主页', icon: DashboardIcon, component: Dashboard },
-  { path: '/shop', name: 'shop', label: '资源', icon: ShopIcon, component: Shop },
-  { path: '/nodes', name: 'nodes', label: '固件', icon: NodesIcon, component: Nodes },
-  { path: '/orders', name: 'orders', label: '激活码', icon: OrdersIcon, component: Orders },
-  { path: '/account', name: 'account', label: '我的', icon: AccountIcon, component: Account },
+  { path: '/', name: 'dashboard', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
+  { path: '/shop', name: 'shop', label: '资源', icon: ShopIcon, component: Shop, requiresAuth: false },
+  { path: '/nodes', name: 'nodes', label: '固件', icon: NodesIcon, component: Nodes, requiresAuth: false },
+  { path: '/orders', name: 'orders', label: '激活码', icon: OrdersIcon, component: Orders, requiresAuth: true },
+  { path: '/account', name: 'account', label: '我的', icon: AccountIcon, component: Account, requiresAuth: true },
 ]
 
 const routes = navItems.map(item => ({
   path: item.path,
   name: item.name,
   component: item.component,
+  meta: {
+    requiresAuth: item.requiresAuth,
+  },
 }))
 
 const router = createRouter({

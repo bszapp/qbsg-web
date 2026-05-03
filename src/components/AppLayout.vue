@@ -29,14 +29,20 @@
           v-for="item in navItems"
           :key="item.path"
           :to="item.path"
-          class="nav-item"
-          :class="{ active: isActive(item.path) }"
-          @click="updateIndicator"
+          custom
+          v-slot="{ href, navigate }"
         >
-          <span class="nav-icon">
-            <component :is="item.icon" />
-          </span>
-          <span class="nav-text">{{ item.label }}</span>
+          <a
+            :href="href"
+            class="nav-item"
+            :class="{ active: isActive(item.path) }"
+            @click="handleNavClick($event, item, navigate)"
+          >
+            <span class="nav-icon">
+              <component :is="item.icon" />
+            </span>
+            <span class="nav-text">{{ item.label }}</span>
+          </a>
         </RouterLink>
       </nav>
     </div>
@@ -110,12 +116,19 @@
     </div>
   </div>
 
+  <AuthGateModal
+    :show="showAuthModal"
+    :mode="authMode"
+    @close="handleAuthModalClose"
+    @switch-mode="authMode = $event"
+  />
+
   <ToastNotification />
 
   <!-- 主内容区 -->
   <div class="main-board">
     <div class="content-area">
-      <RouterView v-slot="{ Component }">
+      <RouterView v-if="!shouldHideProtectedContent" v-slot="{ Component }">
         <Transition name="page-transition" mode="out-in">
           <component :is="Component" :key="$route.path" />
         </Transition>
@@ -125,10 +138,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { navItems } from '../router/index.js'
 import ToastNotification from './ToastNotification.vue'
+import AuthGateModal from './AuthGateModal.vue'
 import { useToast } from '../composables/useToast.js'
 
 // ---- 站点配置 ----
@@ -151,10 +165,55 @@ onMounted(() => {
 })
 
 // ---- 导航路由 ----
+const router = useRouter()
 const route = useRoute()
+const isAuthenticated = ref(false)
+const showAuthModal = ref(false)
+const authMode = ref('login')
+const authRedirectToHomeOnClose = ref(false)
+
 function isActive(path) {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
+}
+
+const shouldHideProtectedContent = computed(() => {
+  return !isAuthenticated.value && route.meta.requiresAuth
+})
+
+function openAuthModal(mode = 'login', redirectToHome = false) {
+  authMode.value = mode
+  authRedirectToHomeOnClose.value = redirectToHome
+  showAuthModal.value = true
+  closeDropdown()
+}
+
+function handleAuthModalClose() {
+  const shouldRedirectToHome = authRedirectToHomeOnClose.value
+
+  showAuthModal.value = false
+  authMode.value = 'login'
+  authRedirectToHomeOnClose.value = false
+
+  if (shouldRedirectToHome && route.path !== '/') {
+    router.replace('/')
+  }
+}
+
+function handleNavClick(event, item, navigate) {
+  if (item.requiresAuth && !isAuthenticated.value) {
+    event.preventDefault()
+    openAuthModal('login', false)
+    return
+  }
+
+  navigate(event)
+}
+
+function handleRouteAuthGate() {
+  if (route.meta.requiresAuth && !isAuthenticated.value) {
+    openAuthModal('login', true)
+  }
 }
 
 // ---- 滑动指示器 ----
@@ -187,6 +246,7 @@ function updateIndicator() {
 }
 
 watch(() => route.path, updateIndicator)
+watch(() => route.fullPath, handleRouteAuthGate, { immediate: true })
 onMounted(() => {
   nextTick(updateIndicator)
   window.addEventListener('resize', updateIndicator)
