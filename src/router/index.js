@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { defineComponent, h } from 'vue'
 import NProgress from 'nprogress'
+import { APP_BASE_PATH } from '../config/app.js'
 
 // ---- SVG 图标组件（不设内联尺寸，由 CSS 统一控制）----
 function svgIconRaw(children) {
@@ -31,27 +32,39 @@ const Shop = () => import('../views/Shop.vue')
 const Nodes = () => import('../views/Nodes.vue')
 const Orders = () => import('../views/Orders.vue')
 const Account = () => import('../views/Account.vue')
-const More = () => import('../views/More.vue')
+const AccountSettings = () => import('../views/AccountSettings.vue')
 
 export const navItems = [
-  { path: '/', name: 'dashboard', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
+  { path: '/', name: 'home', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
   { path: '/shop', name: 'shop', label: '资源', icon: ShopIcon, component: Shop, requiresAuth: false },
   { path: '/nodes', name: 'nodes', label: '固件', icon: NodesIcon, component: Nodes, requiresAuth: false },
-  { path: '/orders', name: 'orders', label: '激活码', icon: OrdersIcon, component: Orders, requiresAuth: true },
-  { path: '/account', name: 'account', label: '我的', icon: AccountIcon, component: Account, requiresAuth: true },
+  { path: '/activation', name: 'activation', label: '激活码', icon: OrdersIcon, component: Orders, requiresAuth: true },
+  { path: '/me', name: 'me', label: '我的', icon: AccountIcon, component: Account, requiresAuth: true },
 ]
 
-const routes = navItems.map(item => ({
-  path: item.path,
-  name: item.name,
-  component: item.component,
-  meta: {
-    requiresAuth: item.requiresAuth,
+const routes = [
+  ...navItems.map((item) => ({
+    path: item.path,
+    name: item.name,
+    component: item.component,
+    meta: {
+      requiresAuth: item.requiresAuth,
+      navPath: item.path,
+    },
+  })),
+  {
+    path: '/me/settings',
+    name: 'me-settings',
+    component: AccountSettings,
+    meta: {
+      requiresAuth: true,
+      navPath: '/me',
+    },
   },
-}))
+]
 
 const router = createRouter({
-  history: createWebHashHistory(),
+  history: createWebHashHistory(APP_BASE_PATH),
   routes,
 })
 

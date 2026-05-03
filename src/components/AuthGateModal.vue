@@ -9,7 +9,24 @@
         <Transition name="auth-popup-slide" appear>
           <div v-if="show" class="auth-popup-container">
             <div class="auth-popup-header">
-              <h2 class="popup-title">{{ mode === 'login' ? '登录' : '创建账户' }}</h2>
+              <div class="auth-popup-tabs">
+                <button
+                  type="button"
+                  class="auth-popup-tab"
+                  :class="{ active: mode === 'login' }"
+                  @click="emit('switch-mode', 'login')"
+                >
+                  登录
+                </button>
+                <button
+                  type="button"
+                  class="auth-popup-tab"
+                  :class="{ active: mode === 'register' }"
+                  @click="emit('switch-mode', 'register')"
+                >
+                  注册
+                </button>
+              </div>
 
               <button class="popup-close-btn" type="button" @click="emitClose">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -21,45 +38,29 @@
 
             <div class="auth-popup-content">
               <div class="auth-header">
-                <div class="auth-logo">
-                  <img src="/logo.png" alt="Logo" />
-                </div>
-                <h1 class="auth-title">{{ mode === 'login' ? '登录到签变时光' : '创建签变时光账户' }}</h1>
+                <span class="auth-badge">{{ mode === 'login' ? '欢迎回来' : '准备开始' }}</span>
+                <h1 class="auth-title">{{ mode === 'login' ? '登录到签变时光' : '注册签变时光账户' }}</h1>
                 <p class="auth-subtitle">
-                  {{ mode === 'login' ? '登录后继续访问激活码与个人中心。' : '创建账户后继续访问激活码与个人中心。' }}
+                  {{ mode === 'login' ? '登录后即可访问激活码、充值和个人设置。' : '注册完成后即可进入个人中心并使用充值与激活功能。' }}
                 </p>
               </div>
 
-              <form v-if="mode === 'login'" class="auth-form" @submit.prevent="handleSubmit('login')">
+              <form v-if="mode === 'login'" class="auth-form" @submit.prevent="submitLogin">
                 <div class="form-group">
-                  <label>
-                    邮箱
-                    <span class="required">*</span>
-                  </label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M4 4h16v16H4z" />
-                      <path d="m22 6-10 7L2 6" />
-                    </svg>
+                  <label>用户名</label>
+                  <div class="input-shell">
                     <input
-                      v-model="loginForm.email"
-                      type="email"
+                      v-model="loginForm.username"
+                      type="text"
                       class="form-control"
-                      placeholder="请输入邮箱地址"
+                      placeholder="请输入用户名"
                     />
                   </div>
                 </div>
 
                 <div class="form-group">
-                  <label>
-                    密码
-                    <span class="required">*</span>
-                  </label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
+                  <label>密码</label>
+                  <div class="input-shell password-shell">
                     <input
                       v-model="loginForm.password"
                       :type="showLoginPassword ? 'text' : 'password'"
@@ -85,64 +86,38 @@
                   </div>
                 </div>
 
-                <div class="form-options">
-                  <div class="remember-me">
-                    <label class="checkbox-container">
-                      <input v-model="loginForm.rememberMe" type="checkbox" />
-                      <span class="checkmark" />
-                      <span class="checkbox-label">记住我</span>
-                    </label>
-                  </div>
+                <CaptchaWidget
+                  ref="loginCaptchaRef"
+                  v-model="loginCaptchaToken"
+                  @error="handleCaptchaError"
+                />
 
-                  <button type="button" class="forgot-password" @click="showForgotPasswordToast">
-                    忘记密码
-                  </button>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-block">
-                  <span>登录</span>
-                  <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
+                <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
+                  <span>{{ submitting ? '登录中...' : '登录' }}</span>
                 </button>
               </form>
 
-              <form v-else class="auth-form" @submit.prevent="handleSubmit('register')">
+              <form v-else class="auth-form" @submit.prevent="submitRegister">
                 <div class="form-group">
-                  <label>
-                    邮箱
-                    <span class="required">*</span>
-                  </label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M4 4h16v16H4z" />
-                      <path d="m22 6-10 7L2 6" />
-                    </svg>
+                  <label>用户名</label>
+                  <div class="input-shell">
                     <input
-                      v-model="registerForm.email"
-                      type="email"
+                      v-model="registerForm.username"
+                      type="text"
                       class="form-control"
-                      placeholder="请输入邮箱地址"
+                      placeholder="3-16 字符"
                     />
                   </div>
                 </div>
 
                 <div class="form-group">
-                  <label>
-                    密码
-                    <span class="required">*</span>
-                  </label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
+                  <label>密码</label>
+                  <div class="input-shell password-shell">
                     <input
                       v-model="registerForm.password"
                       :type="showRegisterPassword ? 'text' : 'password'"
                       class="form-control"
-                      placeholder="请输入密码"
+                      placeholder="6-16 字符，至少两种字符类型"
                     />
                     <button
                       type="button"
@@ -163,72 +138,28 @@
                   </div>
                 </div>
 
-                <div class="form-group">
-                  <label>
-                    确认密码
-                    <span class="required">*</span>
-                  </label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
-                    <input
-                      v-model="registerForm.confirmPassword"
-                      :type="showRegisterConfirmPassword ? 'text' : 'password'"
-                      class="form-control"
-                      placeholder="请再次输入密码"
-                    />
-                    <button
-                      type="button"
-                      class="password-toggle"
-                      @click="showRegisterConfirmPassword = !showRegisterConfirmPassword"
-                    >
-                      <svg v-if="showRegisterConfirmPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3l18 18" />
-                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-                        <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
-                        <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
-                      </svg>
-                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                <CaptchaWidget
+                  ref="registerCaptchaRef"
+                  v-model="registerCaptchaToken"
+                  @error="handleCaptchaError"
+                />
 
-                <div class="agreement-checkbox">
-                  <label class="checkbox-container">
-                    <input v-model="registerForm.agreeTerms" type="checkbox" />
-                    <span class="checkmark" />
-                    <span class="checkbox-label">
-                      我已阅读并同意服务条款
-                      <span class="required">*</span>
-                    </span>
-                  </label>
-                </div>
-
-                <button type="submit" class="btn btn-primary btn-block">
-                  <span>创建账户</span>
-                  <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
+                <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
+                  <span>{{ submitting ? '注册中...' : '注册并登录' }}</span>
                 </button>
               </form>
 
               <div class="auth-footer">
-                <div class="auth-divider">
-                  <span class="auth-divider-text">{{ mode === 'login' ? '还没有账户？' : '已经有账户？' }}</span>
-                </div>
+                <p class="auth-footer-text">
+                  {{ mode === 'login' ? '还没有账户？' : '已经注册过了？' }}
+                </p>
 
                 <button
                   type="button"
                   class="btn btn-secondary btn-block"
                   @click="toggleMode"
                 >
-                  {{ mode === 'login' ? '创建账户' : '返回登录' }}
+                  {{ mode === 'login' ? '去注册' : '返回登录' }}
                 </button>
               </div>
             </div>
@@ -242,6 +173,8 @@
 <script setup>
 import { reactive, ref, toRefs } from 'vue'
 import { useToast } from '../composables/useToast.js'
+import { useAuth } from '../composables/useAuth.js'
+import CaptchaWidget from './CaptchaWidget.vue'
 
 const props = defineProps({
   show: {
@@ -258,22 +191,24 @@ const { show, mode } = toRefs(props)
 const emit = defineEmits(['close', 'switch-mode'])
 
 const { showToast } = useToast()
+const { login, register } = useAuth()
 
 const showLoginPassword = ref(false)
 const showRegisterPassword = ref(false)
-const showRegisterConfirmPassword = ref(false)
+const submitting = ref(false)
+const loginCaptchaRef = ref(null)
+const registerCaptchaRef = ref(null)
+const loginCaptchaToken = ref('')
+const registerCaptchaToken = ref('')
 
 const loginForm = reactive({
-  email: '',
+  username: '',
   password: '',
-  rememberMe: false,
 })
 
 const registerForm = reactive({
-  email: '',
+  username: '',
   password: '',
-  confirmPassword: '',
-  agreeTerms: false,
 })
 
 function emitClose() {
@@ -284,17 +219,90 @@ function toggleMode() {
   emit('switch-mode', mode.value === 'login' ? 'register' : 'login')
 }
 
-function showForgotPasswordToast() {
-  showToast('请联系管理员凭历史交易记录找回', 'info', 3000)
+function handleCaptchaError() {
+  showToast('验证组件加载失败，请刷新页面重试', 'error', 3200)
 }
 
-function handleSubmit(type) {
-  if (type === 'login') {
-    showToast('登录功能暂未接入', 'info', 3000)
+function ensureLoginForm() {
+  if (!loginForm.username.trim()) {
+    showToast('请输入用户名', 'warning', 2800)
+    return false
+  }
+
+  if (!loginForm.password) {
+    showToast('请输入密码', 'warning', 2800)
+    return false
+  }
+
+  if (!loginCaptchaToken.value) {
+    showToast('请先完成人机验证', 'warning', 2800)
+    return false
+  }
+
+  return true
+}
+
+function ensureRegisterForm() {
+  if (!registerForm.username.trim()) {
+    showToast('请输入用户名', 'warning', 2800)
+    return false
+  }
+
+  if (!registerForm.password) {
+    showToast('请输入密码', 'warning', 2800)
+    return false
+  }
+
+  if (!registerCaptchaToken.value) {
+    showToast('请先完成人机验证', 'warning', 2800)
+    return false
+  }
+
+  return true
+}
+
+async function submitLogin() {
+  if (submitting.value || !ensureLoginForm()) {
     return
   }
 
-  showToast('创建账户功能暂未接入', 'info', 3000)
+  submitting.value = true
+
+  const ok = await login({
+    username: loginForm.username.trim(),
+    password: loginForm.password,
+    cf_token: loginCaptchaToken.value,
+  })
+
+  loginCaptchaRef.value?.reset()
+  loginCaptchaToken.value = ''
+  submitting.value = false
+
+  if (ok) {
+    emitClose()
+  }
+}
+
+async function submitRegister() {
+  if (submitting.value || !ensureRegisterForm()) {
+    return
+  }
+
+  submitting.value = true
+
+  const ok = await register({
+    username: registerForm.username.trim(),
+    password: registerForm.password,
+    cf_token: registerCaptchaToken.value,
+  })
+
+  registerCaptchaRef.value?.reset()
+  registerCaptchaToken.value = ''
+  submitting.value = false
+
+  if (ok) {
+    emitClose()
+  }
 }
 </script>
 
@@ -317,11 +325,11 @@ function handleSubmit(type) {
 
 .auth-popup-container {
   width: 100%;
-  max-width: 500px;
+  max-width: 520px;
   background-color: rgba(var(--card-background-rgb), 1);
-  border-radius: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(var(--theme-color-rgb), 0.15);
+  border-radius: 28px;
+  box-shadow: 0 24px 80px rgba(10, 25, 48, 0.24);
+  border: 1px solid rgba(var(--theme-color-rgb), 0.12);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -330,19 +338,36 @@ function handleSubmit(type) {
 }
 
 .auth-popup-header {
-  padding: 20px;
+  padding: 18px 20px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-color);
-  background-color: rgba(var(--theme-color-rgb), 0.03);
+  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.08), rgba(var(--card-background-rgb), 1));
 }
 
-.popup-title {
-  margin: 0;
-  font-size: 18px;
+.auth-popup-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 999px;
+  background: rgba(var(--text-color-rgb), 0.04);
+}
+
+.auth-popup-tab {
+  min-width: 86px;
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text-color);
+  color: var(--secondary-text-color);
+}
+
+.auth-popup-tab.active {
+  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 1), rgba(var(--theme-color-rgb), 0.82));
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(var(--theme-color-rgb), 0.24);
 }
 
 .popup-close-btn {
@@ -366,48 +391,43 @@ function handleSubmit(type) {
 }
 
 .auth-popup-content {
-  padding: 20px;
+  padding: 22px;
   overflow-y: auto;
   flex: 1;
-  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
+  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.05), transparent 35%, rgba(var(--card-background-rgb), 0.98));
 }
 
 .auth-header {
-  text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 24px;
 }
 
-.auth-logo {
-  margin-bottom: 1.5rem;
-  text-align: center;
-}
-
-.auth-logo img {
-  width: 60px;
-  height: 60px;
-  min-width: 60px;
-  min-height: 60px;
-  border-radius: 12px;
-  object-fit: cover;
-  user-select: none;
+.auth-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(var(--theme-color-rgb), 0.08);
+  color: var(--theme-color);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .auth-title {
-  font-size: 1.75rem;
+  font-size: 1.9rem;
   font-weight: 700;
   color: var(--text-color);
-  margin: 0 0 0.5rem;
+  margin: 16px 0 10px;
 }
 
 .auth-subtitle {
-  font-size: 1rem;
+  font-size: 0.98rem;
   color: var(--secondary-text-color);
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.75;
 }
 
 .auth-form {
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
 }
 
 .form-group {
@@ -422,26 +442,8 @@ function handleSubmit(type) {
   font-weight: 600;
 }
 
-.required {
-  color: #ff4d4f;
-  margin-left: 4px;
-  font-size: 16px;
-  vertical-align: middle;
-}
-
-.input-with-icon {
+.input-shell {
   position: relative;
-  width: 100%;
-}
-
-.input-icon {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--secondary-text-color);
-  width: 20px;
-  height: 20px;
 }
 
 .password-toggle {
@@ -458,6 +460,10 @@ function handleSubmit(type) {
   transition: color 0.2s ease;
 }
 
+.password-shell .form-control {
+  padding-right: 42px;
+}
+
 .password-toggle:hover {
   color: var(--theme-color);
 }
@@ -470,18 +476,13 @@ function handleSubmit(type) {
 .form-control {
   box-sizing: border-box;
   width: 100%;
-  padding: 0 14px 0 40px;
-  height: 45px;
-  border-radius: 8px;
+  padding: 0 16px;
+  height: 50px;
+  border-radius: 16px;
   border: 1px solid rgba(var(--text-color-rgb), 0.08);
   background-color: rgba(var(--text-color-rgb), 0.04);
   transition: all 0.3s ease;
   color: var(--text-color);
-}
-
-.form-control[type='password'],
-.form-control[type='text'] {
-  padding-right: 40px;
 }
 
 .form-control:focus {
@@ -495,94 +496,10 @@ function handleSubmit(type) {
   color: rgba(var(--text-color-rgb), 0.45);
 }
 
-.form-options {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.checkbox-container {
-  display: flex;
-  align-items: center;
-  position: relative;
-  padding-left: 30px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.checkbox-container input {
-  position: absolute;
-  opacity: 0;
-  cursor: pointer;
-  height: 0;
-  width: 0;
-}
-
-.checkbox-container input:checked ~ .checkmark {
-  background-color: var(--theme-color);
-  border-color: var(--theme-color);
-}
-
-.checkbox-container input:checked ~ .checkmark::after {
-  display: block;
-}
-
-.checkmark {
-  position: absolute;
-  top: 0;
-  left: 0;
-  height: 20px;
-  width: 20px;
-  background-color: transparent;
-  border: 2px solid var(--border-color);
-  border-radius: 4px;
-  transition: all 0.2s ease;
-}
-
-.checkmark::after {
-  content: '';
-  position: absolute;
-  display: none;
-  left: 5px;
-  top: 0.5px;
-  width: 5px;
-  height: 10px;
-  border: solid white;
-  border-width: 0 2px 2px 0;
-  transform: rotate(45deg);
-}
-
-.checkbox-label {
-  color: var(--secondary-text-color);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.forgot-password {
-  color: var(--theme-color);
-  font-size: 0.875rem;
-  text-decoration: none;
-  transition: color 0.3s ease, opacity 0.3s ease;
-}
-
-.forgot-password:hover {
-  opacity: 0.8;
-}
-
-.agreement-checkbox {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.agreement-checkbox .checkbox-container {
-  align-items: flex-start;
-}
-
 .btn {
-  height: 45px;
+  height: 50px;
   width: 100%;
-  border-radius: 8px;
+  border-radius: 16px;
   transition: all 0.3s;
   display: flex;
   align-items: center;
@@ -590,26 +507,21 @@ function handleSubmit(type) {
 }
 
 .btn-primary {
-  background-color: var(--theme-color);
+  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 1), rgba(var(--theme-color-rgb), 0.82));
   border: none;
   color: white;
   font-weight: 600;
+  box-shadow: 0 18px 34px rgba(var(--theme-color-rgb), 0.24);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: rgba(var(--theme-color-rgb), 0.92);
-}
-
-.btn-primary .icon-right {
-  width: 18px;
-  height: 18px;
-  margin-left: 8px;
+  transform: translateY(-1px);
 }
 
 .btn-secondary {
   color: var(--text-color);
   border: 1px solid var(--border-color);
-  background-color: transparent;
+  background-color: rgba(var(--card-background-rgb), 0.6);
 }
 
 .btn-secondary:hover {
@@ -622,24 +534,11 @@ function handleSubmit(type) {
   margin-top: 24px;
 }
 
-.auth-divider {
-  display: flex;
-  align-items: center;
-  margin: 1.5rem 0;
-}
-
-.auth-divider::before,
-.auth-divider::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background-color: var(--border-color);
-}
-
-.auth-divider-text {
-  padding: 0 1rem;
+.auth-footer-text {
+  margin: 0 0 12px;
   color: var(--secondary-text-color);
-  font-size: 0.875rem;
+  font-size: 0.92rem;
+  text-align: center;
 }
 
 @keyframes modal-in-03fee79b {
@@ -699,16 +598,16 @@ function handleSubmit(type) {
     padding: 15px;
   }
 
-  .popup-title {
-    font-size: 16px;
-  }
-
   .auth-popup-content {
     padding: 15px;
   }
 
   .auth-title {
-    font-size: 1.45rem;
+    font-size: 1.5rem;
+  }
+
+  .auth-popup-tab {
+    min-width: 78px;
   }
 }
 </style>

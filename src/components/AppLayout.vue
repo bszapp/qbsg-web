@@ -76,31 +76,49 @@
     </button>
 
     <!-- 用户头像 + 下拉 -->
-    <div class="user-avatar-container" ref="avatarRef">
-      <div class="avatar-wrapper" @click.stop="toggleDropdown">
-        <div class="avatar-placeholder">
+    <div class="user-avatar-container" ref="userMenuRef">
+      <button
+        type="button"
+        class="user-pill"
+        :class="{ authenticated: isAuthenticated }"
+        @click.stop="handleUserEntryClick"
+      >
+        <span class="user-pill-icon">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
             <circle cx="12" cy="7" r="4"/>
           </svg>
-        </div>
-      </div>
+        </span>
+        <span class="user-pill-text">{{ displayName }}</span>
+        <span v-if="isAuthenticated" class="user-pill-caret" :class="{ open: showDropdown }">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </span>
+      </button>
 
       <Transition name="fade">
         <div v-if="showDropdown" class="dropdown-menu" @click.stop>
-          <div class="menu-item" @click="closeDropdown">
+          <div class="menu-item" @click="goToMyPage">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v4"/>
+              <path d="M12 18v4"/>
+              <path d="m4.93 4.93 2.83 2.83"/>
+              <path d="m16.24 16.24 2.83 2.83"/>
+              <path d="M2 12h4"/>
+              <path d="M18 12h4"/>
+              <path d="m4.93 19.07 2.83-2.83"/>
+              <path d="m16.24 7.76 2.83-2.83"/>
             </svg>
-            <span>个人资料</span>
+            <span>账户充值</span>
           </div>
-          <div class="menu-item" @click="closeDropdown">
+          <div class="menu-item" @click="goToSettings">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="3"/>
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
             </svg>
-            <span>账户设置</span>
+            <span>个人设置</span>
           </div>
           <div class="divider" />
           <div class="menu-item" @click="handleLogout">
@@ -128,7 +146,17 @@
   <!-- 主内容区 -->
   <div class="main-board">
     <div class="content-area">
-      <RouterView v-if="!shouldHideProtectedContent" v-slot="{ Component }">
+      <div v-if="showRouteLoading" class="auth-state-card">
+        <p class="auth-state-title">正在验证登录状态</p>
+        <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
+      </div>
+
+      <div v-else-if="showAuthPrompt" class="auth-state-card">
+        <p class="auth-state-title">请先登录</p>
+        <p class="auth-state-desc">登录后即可访问激活码、充值和个人设置。</p>
+      </div>
+
+      <RouterView v-else v-slot="{ Component }">
         <Transition name="page-transition" mode="out-in">
           <component :is="Component" :key="$route.path" />
         </Transition>
@@ -143,11 +171,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { navItems } from '../router/index.js'
 import ToastNotification from './ToastNotification.vue'
 import AuthGateModal from './AuthGateModal.vue'
-import { useToast } from '../composables/useToast.js'
+import { useAuth } from '../composables/useAuth.js'
 
 // ---- 站点配置 ----
 const siteName = '签变时光'
-const { showToast } = useToast()
 
 // ---- 主题 ----
 const isDark = ref(false)
@@ -167,19 +194,30 @@ onMounted(() => {
 // ---- 导航路由 ----
 const router = useRouter()
 const route = useRoute()
-const isAuthenticated = ref(false)
 const showAuthModal = ref(false)
 const authMode = ref('login')
 const authRedirectToHomeOnClose = ref(false)
+const {
+  isAuthenticated,
+  isReady,
+  bootstrapAuth,
+  logout,
+  state,
+} = useAuth()
 
 function isActive(path) {
-  if (path === '/') return route.path === '/'
-  return route.path.startsWith(path)
+  const activePath = route.meta.navPath || route.path
+
+  if (path === '/') {
+    return activePath === '/'
+  }
+
+  return activePath === path || activePath.startsWith(`${path}/`)
 }
 
-const shouldHideProtectedContent = computed(() => {
-  return !isAuthenticated.value && route.meta.requiresAuth
-})
+const showRouteLoading = computed(() => route.meta.requiresAuth && !isReady.value)
+const showAuthPrompt = computed(() => route.meta.requiresAuth && isReady.value && !isAuthenticated.value)
+const displayName = computed(() => state.user?.username || '未登录')
 
 function openAuthModal(mode = 'login', redirectToHome = false) {
   authMode.value = mode
@@ -211,6 +249,10 @@ function handleNavClick(event, item, navigate) {
 }
 
 function handleRouteAuthGate() {
+  if (!isReady.value) {
+    return
+  }
+
   if (route.meta.requiresAuth && !isAuthenticated.value) {
     openAuthModal('login', true)
   }
@@ -246,7 +288,13 @@ function updateIndicator() {
 }
 
 watch(() => route.path, updateIndicator)
-watch(() => route.fullPath, handleRouteAuthGate, { immediate: true })
+watch(() => [route.fullPath, isReady.value, isAuthenticated.value], handleRouteAuthGate, { immediate: true })
+watch(() => [route.meta.requiresAuth, isAuthenticated.value], ([requiresAuth, authenticated]) => {
+  if ((!requiresAuth || authenticated) && showAuthModal.value) {
+    showAuthModal.value = false
+    authRedirectToHomeOnClose.value = false
+  }
+})
 onMounted(() => {
   nextTick(updateIndicator)
   window.addEventListener('resize', updateIndicator)
@@ -257,18 +305,182 @@ onUnmounted(() => {
 
 // ---- 下拉菜单 ----
 const showDropdown = ref(false)
+const userMenuRef = ref(null)
+
 function toggleDropdown() { showDropdown.value = !showDropdown.value }
 function closeDropdown() { showDropdown.value = false }
-function handleLogout() {
+
+function goToMyPage() {
   closeDropdown()
-  showToast('已退出', 'success', 3000)
+  router.push('/me')
 }
+
+function goToSettings() {
+  closeDropdown()
+  router.push('/me/settings')
+}
+
+async function handleLogout() {
+  closeDropdown()
+  showAuthModal.value = false
+  authRedirectToHomeOnClose.value = false
+
+  if (route.meta.requiresAuth && route.path !== '/') {
+    await router.replace('/')
+  }
+
+  await logout()
+}
+
+function handleUserEntryClick() {
+  if (!isAuthenticated.value) {
+    openAuthModal('login', false)
+    return
+  }
+
+  toggleDropdown()
+}
+
 function handleOutsideClick(e) {
-  const avatarEl = document.querySelector('.user-avatar-container')
-  if (avatarEl && !avatarEl.contains(e.target)) {
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target)) {
     showDropdown.value = false
   }
 }
-onMounted(() => document.addEventListener('click', handleOutsideClick))
-onUnmounted(() => document.removeEventListener('click', handleOutsideClick))
+
+function handlePaymentReturnRoute() {
+  const params = new URLSearchParams(window.location.search)
+
+  if (params.get('callback_target') === 'me' && !route.path.startsWith('/me')) {
+    router.replace('/me')
+  }
+}
+
+onMounted(async () => {
+  document.addEventListener('click', handleOutsideClick)
+  await bootstrapAuth()
+  handlePaymentReturnRoute()
+  updateIndicator()
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleOutsideClick)
+})
 </script>
+
+<style scoped>
+.auth-state-card {
+  margin: 32px auto 0;
+  max-width: 520px;
+  padding: 28px 24px;
+  border-radius: 26px;
+  text-align: center;
+  background: rgba(var(--card-background-rgb), 0.86);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 18px 48px rgba(12, 24, 48, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.auth-state-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-color);
+}
+
+.auth-state-desc {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--secondary-text-color);
+}
+
+.user-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  padding: 0 14px 0 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--theme-color-rgb), 0.18);
+  background: rgba(var(--card-background-rgb), 0.86);
+  box-shadow: 0 10px 28px rgba(12, 24, 48, 0.1);
+  color: var(--text-color);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.user-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px rgba(12, 24, 48, 0.14);
+  border-color: rgba(var(--theme-color-rgb), 0.35);
+}
+
+.user-pill.authenticated {
+  background: linear-gradient(135deg, rgba(var(--card-background-rgb), 0.96), rgba(var(--theme-color-rgb), 0.08));
+}
+
+.user-pill-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(var(--theme-color-rgb), 0.1);
+  color: var(--theme-color);
+  flex-shrink: 0;
+}
+
+.user-pill-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.user-pill-text {
+  max-width: 152px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.user-pill-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--secondary-text-color);
+  transition: transform 0.2s ease;
+}
+
+.user-pill-caret.open {
+  transform: rotate(180deg);
+}
+
+.user-pill-caret svg {
+  width: 14px;
+  height: 14px;
+}
+
+.dropdown-menu {
+  width: 210px;
+  margin-top: 4px;
+}
+
+@media (max-width: 768px) {
+  .user-pill {
+    min-height: 38px;
+    padding-right: 12px;
+  }
+
+  .user-pill-text {
+    max-width: 96px;
+  }
+
+  .dropdown-menu {
+    width: 196px;
+  }
+}
+</style>
