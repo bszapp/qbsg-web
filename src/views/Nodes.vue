@@ -1,44 +1,316 @@
 <template>
-  <div class="page-container">
-    <div class="page-inner">
-      <div class="dashboard-card">
-        <div class="card-header">
-          <h2 class="card-title">页面</h2>
+  <div class="page-shell">
+    <div class="page-stack">
+      <section class="hero-card">
+        <span class="page-eyebrow">固件库</span>
+        <div class="page-title-row">
+          <div>
+            <h1 class="page-title">固件浏览</h1>
+            <p class="page-subtitle">
+              浏览所有可用固件版本，点击分组的「获取激活码」跳转激活页面并自动填入。
+            </p>
+          </div>
+          <div class="hero-actions">
+            <button type="button" class="secondary-button" @click="loadCatalog" :disabled="loading">
+              {{ loading ? '加载中...' : '刷新列表' }}
+            </button>
+          </div>
         </div>
-        <div class="card-body">
-          <p>页面内容将在这里显示。</p>
-        </div>
-      </div>
+      </section>
+
+      <div v-if="loadError" class="callout-box callout-box-error">{{ loadError }}</div>
+      <div v-else-if="loading && !groups.length" class="callout-box">正在加载固件列表...</div>
+
+      <template v-else>
+        <section v-for="(group, gi) in groups" :key="gi" class="panel-card">
+          <div class="section-header">
+            <div>
+              <div class="group-label-row">
+                <span class="provider-badge">{{ group.provider }}</span>
+                <h2 class="section-title">{{ group.label }}</h2>
+              </div>
+              <p class="section-desc">{{ group.firmwares.length }} 个固件版本</p>
+            </div>
+            <button v-if="group.activation_id" type="button" class="primary-button activate-group-btn"
+              @click="goActivate(group)">
+              获取激活码
+            </button>
+          </div>
+
+          <div class="fw-grid">
+            <div v-for="fw in group.firmwares" :key="fw.firmware_id" class="fw-card">
+              <div class="fw-thumb">
+                <img v-if="fw.image_url" :src="fw.image_url" :alt="fw.name" />
+                <div v-else class="fw-thumb-icon">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                    <rect x="9" y="9" width="6" height="6" />
+                    <path d="M9 2v2M15 2v2M9 20v2M15 20v2M2 9h2M2 15h2M20 9h2M20 15h2" />
+                  </svg>
+                </div>
+              </div>
+
+              <div class="fw-body">
+                <span :class="['size-badge', sizeClass(fw.screen_size)]">{{ fw.screen_size }}</span>
+                <p class="fw-name">{{ fw.name }}</p>
+                <p class="fw-desc">{{ fw.description }}</p>
+                <code class="fw-id-code">{{ fw.firmware_id }}</code>
+              </div>
+
+              <div class="fw-foot">
+                <a v-if="fw.download_url" :href="fw.download_url" target="_blank" rel="noopener noreferrer"
+                  class="dl-btn">下载固件</a>
+                <span v-else class="no-dl">未提供下载</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </template>
     </div>
   </div>
 </template>
 
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { postJson } from '../services/api.js'
+import { useToast } from '../composables/useToast.js'
+
+const { showToast } = useToast()
+const router = useRouter()
+
+const groups = ref([])
+const loading = ref(false)
+const loadError = ref('')
+
+const SIZE_CLASS = {
+  '2.13H': 'size-213h',
+  '2.13': 'size-213',
+  '2.9': 'size-29',
+  '4.2': 'size-42',
+}
+
+function sizeClass(s) {
+  return SIZE_CLASS[s] || 'size-213'
+}
+
+async function loadCatalog() {
+  loading.value = true
+  loadError.value = ''
+  try {
+    const data = await postJson('/api/firmware/catalog', {})
+    if (data.type === 'success') {
+      groups.value = Array.isArray(data.groups) ? data.groups : []
+    } else {
+      loadError.value = data.message || '固件列表加载失败'
+      showToast(loadError.value, 'error', 3400)
+    }
+  } catch (err) {
+    loadError.value = err.message || '固件列表加载失败，请稍后重试'
+    showToast(loadError.value, 'error', 3400)
+  } finally {
+    loading.value = false
+  }
+}
+
+function goActivate(group) {
+  router.push({
+    path: '/activation',
+    query: {
+      provider: group.provider,
+      activation_id: group.activation_id,
+    },
+  })
+}
+
+onMounted(() => {
+  loadCatalog()
+})
+</script>
+
 <style scoped>
-.page-container {
-  padding: 20px;
+.callout-box-error {
+  color: var(--error-color);
+  border-color: rgba(var(--error-color-rgb), 0.18);
+  background: rgba(var(--error-color-rgb), 0.08);
+}
+
+.group-label-row {
   display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.provider-badge {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(var(--theme-color-rgb), 0.1);
+  color: var(--theme-color);
+  white-space: nowrap;
+}
+
+.activate-group-btn {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── 固件网格 ── */
+.fw-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.fw-card {
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  border: 1px solid rgba(var(--text-color-rgb), 0.07);
+  background: rgba(var(--text-color-rgb), 0.02);
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.fw-card:hover {
+  border-color: rgba(var(--theme-color-rgb), 0.28);
+  box-shadow: 0 8px 20px rgba(var(--theme-color-rgb), 0.08);
+}
+
+/* 缩略图 */
+.fw-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: rgba(var(--text-color-rgb), 0.04);
+  display: flex;
+  align-items: center;
   justify-content: center;
 }
-.page-inner {
+
+.fw-thumb img {
   width: 100%;
-  max-width: 1200px;
+  height: 100%;
+  object-fit: cover;
 }
-.dashboard-card {
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  padding: 20px;
-  margin-bottom: 24px;
-  border: 1px solid var(--border-color);
-  transition: all 0.3s ease;
+
+.fw-thumb-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: rgba(var(--text-color-rgb), 0.2);
 }
-.dashboard-card:hover {
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
-  border-color: rgba(var(--theme-color-rgb), 0.3);
+
+.fw-thumb-icon svg {
+  width: 36px;
+  height: 36px;
 }
-.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-.card-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--text-color); }
-.card-body p { color: var(--secondary-text-color); margin: 0; line-height: 1.5; }
+
+/* 内容区 */
+.fw-body {
+  flex: 1;
+  padding: 12px 12px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fw-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  line-height: 1.4;
+}
+
+.fw-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  line-height: 1.5;
+}
+
+.fw-id-code {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: rgba(var(--text-color-rgb), 0.4);
+  word-break: break-all;
+}
+
+/* 尺寸徽标 */
+.size-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.size-213h {
+  background: rgba(0, 112, 240, 0.12);
+  color: #0070f0;
+}
+
+.size-213 {
+  background: rgba(var(--text-color-rgb), 0.08);
+  color: var(--secondary-text-color);
+}
+
+.size-29 {
+  background: rgba(0, 160, 80, 0.12);
+  color: #00a050;
+}
+
+.size-42 {
+  background: rgba(150, 50, 200, 0.12);
+  color: #9632c8;
+}
+
+/* 底部操作 */
+.fw-foot {
+  padding: 8px 12px 12px;
+}
+
+.dl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 7px 0;
+  border-radius: 9px;
+  background: rgba(var(--theme-color-rgb), 0.1);
+  color: var(--theme-color);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.dl-btn:hover {
+  background: rgba(var(--theme-color-rgb), 0.18);
+}
+
+.no-dl {
+  display: block;
+  text-align: center;
+  font-size: 12px;
+  color: rgba(var(--text-color-rgb), 0.3);
+  padding: 6px 0;
+}
+
 @media (max-width: 768px) {
-  .page-container { padding: 15px; padding-bottom: 80px; }
+  .fw-grid {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  }
 }
 </style>

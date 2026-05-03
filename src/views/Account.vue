@@ -74,9 +74,9 @@
 
           <div v-if="orderResult" class="order-box">
             <p><span>商家订单号</span><strong>{{ orderResult.orderNo }}</strong></p>
-            <a :href="orderResult.payUrl" target="_blank" rel="noopener noreferrer">
-              点击前往支付
-            </a>
+            <button type="button" class="pay-now-btn" @click="openPayUrl">
+              前往支付
+            </button>
             <p class="tip-text">支付成功后会自动到账；若未自动到账，可在右侧输入订单号手动确认。</p>
           </div>
         </section>
@@ -123,6 +123,12 @@ const selectedPoints = ref('')
 const claimOrderNo = ref('')
 const orderResult = ref(null)
 
+function openPayUrl() {
+  if (orderResult.value?.payUrl) {
+    window.location.href = orderResult.value.payUrl
+  }
+}
+
 const selectedPointsNumber = computed(() => {
   const value = Number.parseInt(selectedPoints.value, 10)
   return Number.isFinite(value) ? value : 0
@@ -168,13 +174,7 @@ const amountHint = computed(() => {
 })
 
 function clearPaymentQuery() {
-  const url = new URL(window.location.href)
-  url.searchParams.delete('callback_target')
-  url.searchParams.delete('out_trade_no')
-
-  const nextSearch = url.searchParams.toString()
-  const nextUrl = `${url.pathname}${nextSearch ? `?${nextSearch}` : ''}${url.hash}`
-  window.history.replaceState({}, '', nextUrl)
+  window.history.replaceState({}, '', window.location.pathname + window.location.hash)
 }
 
 async function refreshInfo() {
@@ -216,7 +216,7 @@ async function createRechargeOrder() {
   orderResult.value = null
 
   try {
-    const callbackUrl = `${window.location.origin}${window.location.pathname}?callback_target=me`
+    const callbackUrl = `${window.location.origin}${window.location.pathname}?callback_target=me#/me`
     const data = await postJson('/api/pay/create', {
       token: authState.token,
       points: selectedPointsNumber.value,
@@ -229,7 +229,10 @@ async function createRechargeOrder() {
         payUrl: data.pay_url,
       }
       claimOrderNo.value = data.order_no
-      showToast('订单创建成功，请完成支付', 'success', 3200)
+      showToast('订单创建成功，1 秒后自动跳转支付...', 'success', 3200)
+      setTimeout(() => {
+        window.location.href = data.pay_url
+      }, 1000)
       return
     }
 
@@ -440,12 +443,23 @@ onMounted(async () => {
   text-align: right;
 }
 
-.order-box a {
+.pay-now-btn {
   display: inline-flex;
   align-items: center;
   margin: 16px 0 10px;
-  color: var(--theme-color);
+  padding: 10px 22px;
+  border-radius: 10px;
+  border: none;
+  background: var(--theme-color);
+  color: #fff;
   font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.pay-now-btn:hover {
+  opacity: 0.88;
 }
 
 .claim-group {

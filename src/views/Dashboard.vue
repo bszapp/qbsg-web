@@ -3,10 +3,10 @@
     <div class="dashboard-inner">
       <div class="dashboard-card">
         <div class="card-header">
-          <h2 class="card-title">仪表盘</h2>
+          <h2 class="card-title">啥都木有</h2>
         </div>
         <div class="card-body">
-          <p>欢迎回来！这里是您的账户概览。</p>
+          <p>前面的区域，以后再来探索吧！</p>
         </div>
       </div>
     </div>

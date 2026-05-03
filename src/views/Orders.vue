@@ -40,6 +40,7 @@
             <div class="field-group">
               <label class="field-label">固件提供商</label>
               <select v-model="selectedProviderId" class="select-input">
+                <option value="" disabled>-- 请选择 --</option>
                 <option v-for="provider in providers" :key="provider.id" :value="provider.id">
                   {{ provider.id }}
                 </option>
@@ -49,6 +50,7 @@
             <div class="field-group">
               <label class="field-label">固件型号</label>
               <select v-model="selectedFirmwareId" class="select-input">
+                <option value="" disabled>-- 请选择 --</option>
                 <option v-for="firmware in currentFirmwares" :key="firmware.id" :value="firmware.id">
                   {{ firmware.id }}
                 </option>
@@ -97,12 +99,14 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useToast } from '../composables/useToast.js'
 import { useAuth } from '../composables/useAuth.js'
 import { normalizeMessage, postJson } from '../services/api.js'
 
 const { showToast } = useToast()
 const { state: authState, handleAuthFailure, updateUser } = useAuth()
+const route = useRoute()
 
 const providers = ref([])
 const loadingList = ref(false)
@@ -132,7 +136,7 @@ watch(currentProvider, (provider) => {
   }
 
   if (!provider.firmwares.some((firmware) => firmware.id === selectedFirmwareId.value)) {
-    selectedFirmwareId.value = provider.firmwares[0]?.id || ''
+    selectedFirmwareId.value = ''
   }
 })
 
@@ -150,7 +154,12 @@ async function loadFirmwareList() {
     }
 
     providers.value = Array.isArray(data.providers) ? data.providers : []
-    selectedProviderId.value = providers.value[0]?.id || ''
+    selectedProviderId.value = ''
+    // 如果是从固件页跳过来的，自动填入参数
+    const providerParam = route.query.provider
+    const activationIdParam = route.query.activation_id
+    if (providerParam) selectedProviderId.value = String(providerParam)
+    if (activationIdParam) selectedFirmwareId.value = String(activationIdParam)
   } catch (error) {
     loadError.value = error.message || '固件列表加载失败，请稍后重试'
     showToast(loadError.value, 'error', 3400)

@@ -207,7 +207,7 @@
 </template>
 
 <script setup>
-import { reactive, ref, toRefs } from 'vue'
+import { reactive, ref, toRefs, onMounted } from 'vue'
 import { useToast } from '../composables/useToast.js'
 import { useAuth } from '../composables/useAuth.js'
 import CaptchaWidget from './CaptchaWidget.vue'
@@ -238,10 +238,26 @@ const registerCaptchaRef = ref(null)
 const loginCaptchaToken = ref('')
 const registerCaptchaToken = ref('')
 
+const REMEMBER_ME_KEY = 'login_remember_me'
+
 const loginForm = reactive({
   username: '',
   password: '',
   rememberMe: false,
+})
+
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem(REMEMBER_ME_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved)
+      loginForm.username = parsed.username || ''
+      loginForm.password = parsed.password || ''
+      loginForm.rememberMe = true
+    }
+  } catch {
+    // 忽略解析错误
+  }
 })
 
 const registerForm = reactive({
@@ -332,11 +348,38 @@ async function submitLogin() {
   submitting.value = false
 
   if (ok) {
+    if (loginForm.rememberMe) {
+      try {
+        localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({
+          username: loginForm.username.trim(),
+          password: loginForm.password,
+        }))
+      } catch {
+        // 忽略存储错误
+      }
+    } else {
+      localStorage.removeItem(REMEMBER_ME_KEY)
+    }
     emitClose()
   }
 }
 
 async function submitRegister() {
+  if (ok) {
+    if (loginForm.rememberMe) {
+      try {
+        localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({
+          username: loginForm.username.trim(),
+          password: loginForm.password,
+        }))
+      } catch {
+        // 忽略存储错误
+      }
+    } else {
+      localStorage.removeItem(REMEMBER_ME_KEY)
+    }
+    emitClose()
+  }
   if (submitting.value || !ensureRegisterForm()) {
     return
   }
