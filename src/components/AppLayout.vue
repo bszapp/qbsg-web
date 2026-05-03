@@ -97,7 +97,7 @@
             <span>账户设置</span>
           </div>
           <div class="divider" />
-          <div class="menu-item" @click="closeDropdown">
+          <div class="menu-item" @click="handleLogout">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
               <polyline points="16 17 21 12 16 7"/>
@@ -109,6 +109,8 @@
       </Transition>
     </div>
   </div>
+
+  <ToastNotification />
 
   <!-- 主内容区 -->
   <div class="main-board">
@@ -123,12 +125,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { navItems } from '../router/index.js'
+import ToastNotification from './ToastNotification.vue'
+import { useToast } from '../composables/useToast.js'
 
 // ---- 站点配置 ----
-const siteName = 'XFLTD'
+const siteName = '签变时光'
+const { showToast } = useToast()
 
 // ---- 主题 ----
 const isDark = ref(false)
@@ -194,6 +199,10 @@ onUnmounted(() => {
 const showDropdown = ref(false)
 function toggleDropdown() { showDropdown.value = !showDropdown.value }
 function closeDropdown() { showDropdown.value = false }
+function handleLogout() {
+  closeDropdown()
+  showToast('已退出', 'success', 3000)
+}
 function handleOutsideClick(e) {
   const avatarEl = document.querySelector('.user-avatar-container')
   if (avatarEl && !avatarEl.contains(e.target)) {
