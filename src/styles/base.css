@@ -1,0 +1,115 @@
+/**
+ * 重置与基础样式 — 照抄原站
+ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+}
+
+@media (max-width: 576px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  overflow-x: hidden;
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+a {
+  color: var(--theme-color);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+a:hover {
+  text-decoration: none;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
+  border: none;
+  background: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+input, button, textarea, select {
+  font: inherit;
+}
+
+/* 隐藏滚动条 (桌面) */
+@media (min-width: 769px) {
+  html, body, div, main, section, article, aside, nav {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+  ::-webkit-scrollbar,
+  ::-webkit-scrollbar-button,
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-track-piece,
+  ::-webkit-scrollbar-thumb,
+  ::-webkit-scrollbar-corner,
+  ::-webkit-resizer {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    background: transparent !important;
+  }
+  * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+}
+
+/* Firefox / WebKit 滚动条 (移动端保留) */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background-color: var(--input-bg-color, rgba(0, 0, 0, 0.05));
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--theme-color);
+    border-radius: 3px;
+    opacity: 0.7;
+  }
+  ::-webkit-scrollbar-corner {
+    background-color: transparent;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--theme-color) var(--input-bg-color, rgba(0, 0, 0, 0.05));
+  }
+}
+
+/* 辅助类 */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  user-select: none;
+}

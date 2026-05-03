@@ -1,0 +1,34 @@
+/* ==========================================
+   页面占位符样式
+   ========================================== */
+.page-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  text-align: center;
+  gap: 16px;
+  padding: 40px 20px;
+}
+.placeholder-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 20px;
+  background: rgba(var(--theme-color-rgb), 0.08);
+  color: var(--theme-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.placeholder-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-color);
+  margin: 0;
+}
+.placeholder-desc {
+  font-size: 0.9rem;
+  color: var(--secondary-text-color);
+  margin: 0;
+}

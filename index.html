@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>XFLTD</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      @media (min-width: 769px) {
+        html, body, div, main, section, article, aside, nav {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+        ::-webkit-scrollbar,
+        ::-webkit-scrollbar-button,
+        ::-webkit-scrollbar-track,
+        ::-webkit-scrollbar-track-piece,
+        ::-webkit-scrollbar-thumb,
+        ::-webkit-scrollbar-corner,
+        ::-webkit-resizer {
+          display: none !important;
+          width: 0 !important;
+          height: 0 !important;
+          background: transparent !important;
+        }
+        * {
+          scrollbar-width: none !important;
+          -ms-overflow-style: none !important;
+        }
+      }
+      html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow-x: hidden; }
+      #app { width: 100%; height: 100%; }
+      html.preloader-active, body.preloader-active { overflow: hidden !important; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
