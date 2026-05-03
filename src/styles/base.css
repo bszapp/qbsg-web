@@ -34,6 +34,7 @@ a {
   text-decoration: none;
   transition: color 0.3s ease;
 }
+
 a:hover {
   text-decoration: none;
 }
@@ -51,20 +52,33 @@ img {
   height: auto;
 }
 
-ul, ol {
+ul,
+ol {
   list-style: none;
 }
 
-input, button, textarea, select {
+input,
+button,
+textarea,
+select {
   font: inherit;
 }
 
 /* 隐藏滚动条 (桌面) */
 @media (min-width: 769px) {
-  html, body, div, main, section, article, aside, nav {
+
+  html,
+  body,
+  div,
+  main,
+  section,
+  article,
+  aside,
+  nav {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
   }
+
   ::-webkit-scrollbar,
   ::-webkit-scrollbar-button,
   ::-webkit-scrollbar-track,
@@ -77,6 +91,7 @@ input, button, textarea, select {
     height: 0 !important;
     background: transparent !important;
   }
+
   * {
     scrollbar-width: none !important;
     -ms-overflow-style: none !important;
@@ -89,18 +104,22 @@ input, button, textarea, select {
     width: 6px;
     height: 6px;
   }
+
   ::-webkit-scrollbar-track {
     background-color: var(--input-bg-color, rgba(0, 0, 0, 0.05));
     border-radius: 3px;
   }
+
   ::-webkit-scrollbar-thumb {
     background-color: var(--theme-color);
     border-radius: 3px;
     opacity: 0.7;
   }
+
   ::-webkit-scrollbar-corner {
     background-color: transparent;
   }
+
   * {
     scrollbar-width: thin;
     scrollbar-color: var(--theme-color) var(--input-bg-color, rgba(0, 0, 0, 0.05));

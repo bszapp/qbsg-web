@@ -177,17 +177,6 @@
                   </div>
                 </div>
 
-                <div class="agreement-checkbox">
-                  <label class="checkbox-container">
-                    <input v-model="registerForm.agreeTerms" type="checkbox" />
-                    <span class="checkmark" />
-                    <span class="checkbox-label">
-                      我已阅读并同意服务条款
-                      <span class="required">*</span>
-                    </span>
-                  </label>
-                </div>
-
                 <CaptchaWidget ref="registerCaptchaRef" v-model="registerCaptchaToken" @error="handleCaptchaError" />
 
                 <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
@@ -258,8 +247,7 @@ const loginForm = reactive({
 const registerForm = reactive({
   username: '',
   password: '',
-  confirmPassword: '',
-  agreeTerms: false,
+  confirmPassword: ''
 })
 
 function emitClose() {
@@ -315,11 +303,6 @@ function ensureRegisterForm() {
 
   if (registerForm.password !== registerForm.confirmPassword) {
     showToast('两次输入的密码不一致', 'warning', 2800)
-    return false
-  }
-
-  if (!registerForm.agreeTerms) {
-    showToast('请先阅读并同意服务条款', 'warning', 2800)
     return false
   }
 
@@ -645,15 +628,6 @@ async function submitRegister() {
 
 .forgot-password:hover {
   opacity: 0.8;
-}
-
-.agreement-checkbox {
-  margin-top: 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.agreement-checkbox .checkbox-container {
-  align-items: flex-start;
 }
 
 .btn {

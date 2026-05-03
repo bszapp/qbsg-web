@@ -112,7 +112,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { normalizeMessage, postJson } from '../services/api.js'
 
 const { showToast } = useToast()
-const { state: authState, refreshProfile, updateUser, handleAuthFailure } = useAuth()
+const { state: authState, refreshProfile, updateUser } = useAuth()
 
 const payConfig = ref(null)
 const loadingPayConfig = ref(false)
@@ -270,10 +270,6 @@ async function claimOrder(options = {}) {
         updateUser({ points: data.points })
       }
       return true
-    }
-
-    if (handleAuthFailure(data)) {
-      return false
     }
 
     showToast(

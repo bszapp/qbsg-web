@@ -234,16 +234,9 @@ async function deleteAccount(payload) {
     })
 
     if (data.type === 'success') {
-      clearSession()
-      state.ready = true
-
       const { showToast } = useToast()
       showToast(normalizeMessage(data, '账号已注销'), 'success', 3200)
       return true
-    }
-
-    if (handleAuthFailure(data)) {
-      return false
     }
 
     const { showToast } = useToast()

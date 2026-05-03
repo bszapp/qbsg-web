@@ -128,16 +128,30 @@
   <!-- 主内容区 -->
   <div class="main-board">
     <div class="content-area">
-      <div v-if="showRouteLoading" class="auth-state-card">
-        <p class="auth-state-title">正在验证登录状态</p>
-        <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
-      </div>
+      <Transition name="page-transition" mode="out-in">
+        <div v-if="showRouteLoading" key="loading" class="auth-state-card">
+          <p class="auth-state-title">正在验证登录状态</p>
+          <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
+        </div>
 
-      <RouterView v-else v-slot="{ Component }">
-        <Transition name="page-transition" mode="out-in">
-          <component :is="Component" :key="$route.path" />
-        </Transition>
-      </RouterView>
+        <div v-else-if="showAuthRequired" key="auth-required" class="auth-state-card">
+          <div class="auth-required-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+            </svg>
+          </div>
+          <p class="auth-state-title">需要登录才能访问</p>
+          <p class="auth-state-desc">此页面需要登录后才能查看，请先登录或注册账户。</p>
+          <button class="auth-state-btn" @click="openAuthModal('login', false)">立即登录</button>
+        </div>
+
+        <RouterView v-else key="page" v-slot="{ Component }">
+          <Transition name="page-transition" mode="out-in">
+            <component :is="Component" :key="$route.path" />
+          </Transition>
+        </RouterView>
+      </Transition>
     </div>
   </div>
 </template>
@@ -195,6 +209,7 @@ function isActive(path) {
 }
 
 const showRouteLoading = computed(() => route.meta.requiresAuth && !isReady.value)
+const showAuthRequired = computed(() => route.meta.requiresAuth && isReady.value && !isAuthenticated.value)
 const displayName = computed(() => state.user?.username || '未登录')
 
 function openAuthModal(mode = 'login', redirectBack = false) {
@@ -211,9 +226,19 @@ function handleAuthModalClose() {
   authMode.value = 'login'
   redirectBackOnClose.value = false
 
-  // 用户手动关闭弹窗且仍未登录时，返回上一页（而非主页）
+  // 关闭弹窗且仍未登录时：
+  // 判断上一个页面的 URL（# 之前的部分）是否和当前页面相同。
+  // 相同 → 说明是同一个 SPA 内前进来的，正常 back()
+  // 不同 → 说明是直接从外部链接进入的，back() 会离开当前站，
+  //         改为跳到当前 URL 去掉 # 之后的地址（SPA 根路径）
   if (shouldRedirectBack && !isAuthenticated.value) {
-    router.back()
+    const currentBase = window.location.href.split('#')[0]
+    const referrer = document.referrer
+    if (referrer && referrer.split('#')[0] === currentBase) {
+      router.back()
+    } else {
+      window.location.replace(currentBase + '#/')
+    }
   }
 }
 
@@ -353,7 +378,41 @@ onUnmounted(() => {
   border: 1px solid var(--border-color);
   box-shadow: 0 18px 48px rgba(12, 24, 48, 0.1);
   backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+.auth-required-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  background: rgba(var(--theme-color-rgb), 0.08);
+  color: var(--theme-color);
+}
+
+.auth-required-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+.auth-state-btn {
+  margin-top: 20px;
+  padding: 10px 28px;
+  border-radius: 999px;
+  border: none;
+  background-color: var(--theme-color);
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.auth-state-btn:hover {
+  opacity: 0.88;
 }
 
 .auth-state-title {
@@ -376,7 +435,6 @@ onUnmounted(() => {
 }
 
 .user-pill-text {
-  max-width: 152px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -412,10 +470,6 @@ onUnmounted(() => {
   .user-pill {
     min-height: 38px;
     padding-right: 12px;
-  }
-
-  .user-pill-text {
-    max-width: 96px;
   }
 
   .dropdown-menu {

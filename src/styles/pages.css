@@ -17,7 +17,7 @@
   border-radius: 20px;
   box-shadow: 0 12px 36px rgba(12, 24, 48, 0.08);
   backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .hero-card {

@@ -193,11 +193,8 @@ onBeforeUnmount(() => {
 <style scoped>
 .captcha-box {
   position: relative;
-  min-height: 86px;
-  border-radius: 18px;
-  border: 1px solid rgba(var(--text-color-rgb), 0.08);
-  background: rgba(var(--text-color-rgb), 0.03);
-  overflow: hidden;
+  margin: 16px 0;
+  min-height: 78px;
 }
 
 .captcha-placeholder {
@@ -214,13 +211,6 @@ onBeforeUnmount(() => {
 
 .captcha-box.state-error .captcha-placeholder {
   color: var(--error-color);
-}
-
-.captcha-host {
-  min-height: 86px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .captcha-box.state-ready .captcha-placeholder {
