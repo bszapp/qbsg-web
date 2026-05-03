@@ -211,7 +211,6 @@
 }
 
 .avatar-wrapper {
-  width: 38px;
   height: 38px;
   border-radius: 50%;
   cursor: pointer;
@@ -532,7 +531,6 @@
 }
 
 .slide-tabs-wrapper {
-  background: rgba(var(--card-background-rgb), 0.7);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-radius: 30px;
@@ -832,8 +830,12 @@
 .main-board {
   min-height: 100vh;
   position: relative;
-  overflow-x: hidden;
-  z-index: 1;
+  /* overflow-x: clip 不创建新的格式化上下文，不影响子元素 backdrop-filter 穿透背景层；
+     旧的 overflow-x: hidden 在生产构建中会将此节点提升为独立合成层，
+     导致其内部所有 backdrop-filter 只能模糊自身层内容而非全局背景 */
+  overflow-x: clip;
+  /* 移除 z-index:1：它会在此建立层叠上下文，生产构建优化时同样会隔离
+     子元素的 backdrop-filter，使其看不到 z-index:-1 的背景装饰层 */
 }
 
 .content-area {

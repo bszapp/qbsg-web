@@ -1,6 +1,6 @@
 import { computed, reactive, readonly } from 'vue'
 import { useToast } from './useToast.js'
-import { looksLikeAuthError, normalizeMessage, postJson } from '../services/api.js'
+import { normalizeMessage, postJson } from '../services/api.js'
 
 const TOKEN_STORAGE_KEY = 'xfltd_user_token'
 
@@ -53,10 +53,6 @@ function updateUser(patch = {}) {
 
 function handleAuthFailure(payload, options = {}) {
   const message = normalizeMessage(payload, '登录状态已过期，请重新登录')
-
-  if (!looksLikeAuthError(message, payload?.httpStatus)) {
-    return false
-  }
 
   clearSession()
 

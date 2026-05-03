@@ -16,14 +16,6 @@ export function normalizeMessage(payload, fallback = '操作失败，请稍后�
   return fallback
 }
 
-export function looksLikeAuthError(message = '', status) {
-  if (status === 401 || status === 403) {
-    return true
-  }
-
-  return /token|过期|失效|未登录|登录|登陆|认证|授权|expired|unauthori|forbidden|invalid/i.test(message)
-}
-
 export async function postJson(path, body = {}) {
   let response
 

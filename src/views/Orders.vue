@@ -40,11 +40,7 @@
             <div class="field-group">
               <label class="field-label">固件提供商</label>
               <select v-model="selectedProviderId" class="select-input">
-                <option
-                  v-for="provider in providers"
-                  :key="provider.id"
-                  :value="provider.id"
-                >
+                <option v-for="provider in providers" :key="provider.id" :value="provider.id">
                   {{ provider.id }}
                 </option>
               </select>
@@ -53,24 +49,15 @@
             <div class="field-group">
               <label class="field-label">固件型号</label>
               <select v-model="selectedFirmwareId" class="select-input">
-                <option
-                  v-for="firmware in currentFirmwares"
-                  :key="firmware.id"
-                  :value="firmware.id"
-                >
-                  {{ firmware.id }}（{{ firmware.points }} 积分）
+                <option v-for="firmware in currentFirmwares" :key="firmware.id" :value="firmware.id">
+                  {{ firmware.id }}
                 </option>
               </select>
             </div>
 
             <div class="field-group full">
               <label class="field-label">设备 MAC</label>
-              <input
-                v-model="macValue"
-                type="text"
-                class="text-input"
-                placeholder="这里不做前端校验，后端会接收你输入的原始内容"
-              />
+              <input v-model="macValue" type="text" class="text-input" placeholder="这里不做前端校验，后端会接收你输入的原始内容" />
             </div>
           </div>
 
@@ -164,7 +151,6 @@ async function loadFirmwareList() {
 
     providers.value = Array.isArray(data.providers) ? data.providers : []
     selectedProviderId.value = providers.value[0]?.id || ''
-    showToast('固件类型加载成功', 'success', 2400)
   } catch (error) {
     loadError.value = error.message || '固件列表加载失败，请稍后重试'
     showToast(loadError.value, 'error', 3400)
@@ -244,7 +230,6 @@ onMounted(() => {
 .result-code-box {
   padding: 20px;
   border-radius: 22px;
-  background: linear-gradient(135deg, rgba(var(--success-color-rgb), 0.08), rgba(var(--card-background-rgb), 0.98));
   border: 1px solid rgba(var(--success-color-rgb), 0.2);
 }
 

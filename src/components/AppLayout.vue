@@ -18,26 +18,13 @@
       <nav class="slide-tabs-nav" ref="navRef">
         <!-- 指示器 -->
         <div class="indicator-container">
-          <div
-            class="slider-indicator"
-            :style="indicatorStyle"
-          />
+          <div class="slider-indicator" :style="indicatorStyle" />
         </div>
 
         <!-- 导航项 -->
-        <RouterLink
-          v-for="item in navItems"
-          :key="item.path"
-          :to="item.path"
-          custom
-          v-slot="{ href, navigate }"
-        >
-          <a
-            :href="href"
-            class="nav-item"
-            :class="{ active: isActive(item.path) }"
-            @click="handleNavClick($event, item, navigate)"
-          >
+        <RouterLink v-for="item in navItems" :key="item.path" :to="item.path" custom v-slot="{ href, navigate }">
+          <a :href="href" class="nav-item" :class="{ active: isActive(item.path) }"
+            @click="handleNavClick($event, item, navigate)">
             <span class="nav-icon">
               <component :is="item.icon" />
             </span>
@@ -51,81 +38,80 @@
   <!-- 右侧工具栏（固定右上角）-->
   <div class="top-toolbar no-select">
     <!-- 主题切换 -->
-    <button
-      class="theme-toggle"
-      @click="toggleTheme"
-      :title="isDark ? '切换亮色' : '切换暗色'"
-    >
+    <button class="theme-toggle" @click="toggleTheme" :title="isDark ? '切换亮色' : '切换暗色'">
       <span class="theme-toggle-icon">
         <!-- 太阳 / 月亮 SVG -->
-        <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="5"/>
-          <line x1="12" y1="1" x2="12" y2="3"/>
-          <line x1="12" y1="21" x2="12" y2="23"/>
-          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-          <line x1="1" y1="12" x2="3" y2="12"/>
-          <line x1="21" y1="12" x2="23" y2="12"/>
-          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        <svg v-if="isDark" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="5" />
+          <line x1="12" y1="1" x2="12" y2="3" />
+          <line x1="12" y1="21" x2="12" y2="23" />
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <line x1="1" y1="12" x2="3" y2="12" />
+          <line x1="21" y1="12" x2="23" y2="12" />
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
         </svg>
-        <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
         </svg>
       </span>
     </button>
 
     <!-- 用户头像 + 下拉 -->
     <div class="user-avatar-container" ref="userMenuRef">
-      <button
-        type="button"
-        class="user-pill"
-        :class="{ authenticated: isAuthenticated }"
-        @click.stop="handleUserEntryClick"
-      >
-        <span class="user-pill-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
+      <div class="avatar-wrapper" @click.stop="handleUserEntryClick">
+        <div class="avatar-placeholder">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
           </svg>
-        </span>
+        </div>
         <span class="user-pill-text">{{ displayName }}</span>
         <span v-if="isAuthenticated" class="user-pill-caret" :class="{ open: showDropdown }">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
             <polyline points="6 9 12 15 18 9" />
           </svg>
         </span>
-      </button>
+      </div>
 
       <Transition name="fade">
         <div v-if="showDropdown" class="dropdown-menu" @click.stop>
           <div class="menu-item" @click="goToMyPage">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M12 2v4"/>
-              <path d="M12 18v4"/>
-              <path d="m4.93 4.93 2.83 2.83"/>
-              <path d="m16.24 16.24 2.83 2.83"/>
-              <path d="M2 12h4"/>
-              <path d="M18 12h4"/>
-              <path d="m4.93 19.07 2.83-2.83"/>
-              <path d="m16.24 7.76 2.83-2.83"/>
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v4" />
+              <path d="M12 18v4" />
+              <path d="m4.93 4.93 2.83 2.83" />
+              <path d="m16.24 16.24 2.83 2.83" />
+              <path d="M2 12h4" />
+              <path d="M18 12h4" />
+              <path d="m4.93 19.07 2.83-2.83" />
+              <path d="m16.24 7.76 2.83-2.83" />
             </svg>
             <span>账户充值</span>
           </div>
           <div class="menu-item" @click="goToSettings">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"/>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
             <span>个人设置</span>
           </div>
           <div class="divider" />
           <div class="menu-item" @click="handleLogout">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
-              <polyline points="16 17 21 12 16 7"/>
-              <line x1="21" y1="12" x2="9" y2="12"/>
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+              <polyline points="16 17 21 12 16 7" />
+              <line x1="21" y1="12" x2="9" y2="12" />
             </svg>
             <span>退出登录</span>
           </div>
@@ -134,12 +120,8 @@
     </div>
   </div>
 
-  <AuthGateModal
-    :show="showAuthModal"
-    :mode="authMode"
-    @close="handleAuthModalClose"
-    @switch-mode="authMode = $event"
-  />
+  <AuthGateModal :show="showAuthModal" :mode="authMode" @close="handleAuthModalClose"
+    @switch-mode="authMode = $event" />
 
   <ToastNotification />
 
@@ -149,11 +131,6 @@
       <div v-if="showRouteLoading" class="auth-state-card">
         <p class="auth-state-title">正在验证登录状态</p>
         <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
-      </div>
-
-      <div v-else-if="showAuthPrompt" class="auth-state-card">
-        <p class="auth-state-title">请先登录</p>
-        <p class="auth-state-desc">登录后即可访问激活码、充值和个人设置。</p>
       </div>
 
       <RouterView v-else v-slot="{ Component }">
@@ -196,7 +173,9 @@ const router = useRouter()
 const route = useRoute()
 const showAuthModal = ref(false)
 const authMode = ref('login')
-const authRedirectToHomeOnClose = ref(false)
+// true = 关闭弹窗且未登录时执行 router.back()（由路由鉴权触发时置为 true）
+// false = 关闭弹窗不做额外跳转（由头像按钮或其他入口触发时保持 false）
+const redirectBackOnClose = ref(false)
 const {
   isAuthenticated,
   isReady,
@@ -216,35 +195,30 @@ function isActive(path) {
 }
 
 const showRouteLoading = computed(() => route.meta.requiresAuth && !isReady.value)
-const showAuthPrompt = computed(() => route.meta.requiresAuth && isReady.value && !isAuthenticated.value)
 const displayName = computed(() => state.user?.username || '未登录')
 
-function openAuthModal(mode = 'login', redirectToHome = false) {
+function openAuthModal(mode = 'login', redirectBack = false) {
   authMode.value = mode
-  authRedirectToHomeOnClose.value = redirectToHome
+  redirectBackOnClose.value = redirectBack
   showAuthModal.value = true
   closeDropdown()
 }
 
 function handleAuthModalClose() {
-  const shouldRedirectToHome = authRedirectToHomeOnClose.value
+  const shouldRedirectBack = redirectBackOnClose.value
 
   showAuthModal.value = false
   authMode.value = 'login'
-  authRedirectToHomeOnClose.value = false
+  redirectBackOnClose.value = false
 
-  if (shouldRedirectToHome && route.path !== '/') {
-    router.replace('/')
+  // 用户手动关闭弹窗且仍未登录时，返回上一页（而非主页）
+  if (shouldRedirectBack && !isAuthenticated.value) {
+    router.back()
   }
 }
 
+// 导航项点击：无条件放行，让路由守卫决定是否弹出登录框
 function handleNavClick(event, item, navigate) {
-  if (item.requiresAuth && !isAuthenticated.value) {
-    event.preventDefault()
-    openAuthModal('login', false)
-    return
-  }
-
   navigate(event)
 }
 
@@ -253,6 +227,8 @@ function handleRouteAuthGate() {
     return
   }
 
+  // 落地在需要登录的页面但未登录时弹出登录框；
+  // redirectBack=true 表示关闭弹窗且未登录时执行 router.back()
   if (route.meta.requiresAuth && !isAuthenticated.value) {
     openAuthModal('login', true)
   }
@@ -292,7 +268,7 @@ watch(() => [route.fullPath, isReady.value, isAuthenticated.value], handleRouteA
 watch(() => [route.meta.requiresAuth, isAuthenticated.value], ([requiresAuth, authenticated]) => {
   if ((!requiresAuth || authenticated) && showAuthModal.value) {
     showAuthModal.value = false
-    authRedirectToHomeOnClose.value = false
+    redirectBackOnClose.value = false
   }
 })
 onMounted(() => {
@@ -323,7 +299,7 @@ function goToSettings() {
 async function handleLogout() {
   closeDropdown()
   showAuthModal.value = false
-  authRedirectToHomeOnClose.value = false
+  redirectBackOnClose.value = false
 
   if (route.meta.requiresAuth && route.path !== '/') {
     await router.replace('/')
@@ -374,7 +350,6 @@ onUnmounted(() => {
   padding: 28px 24px;
   border-radius: 26px;
   text-align: center;
-  background: rgba(var(--card-background-rgb), 0.86);
   border: 1px solid var(--border-color);
   box-shadow: 0 18px 48px rgba(12, 24, 48, 0.1);
   backdrop-filter: blur(12px);
@@ -395,45 +370,9 @@ onUnmounted(() => {
   color: var(--secondary-text-color);
 }
 
-.user-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 14px 0 10px;
+.avatar-wrapper {
   border-radius: 999px;
-  border: 1px solid rgba(var(--theme-color-rgb), 0.18);
-  background: rgba(var(--card-background-rgb), 0.86);
-  box-shadow: 0 10px 28px rgba(12, 24, 48, 0.1);
-  color: var(--text-color);
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
-}
-
-.user-pill:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 14px 30px rgba(12, 24, 48, 0.14);
-  border-color: rgba(var(--theme-color-rgb), 0.35);
-}
-
-.user-pill.authenticated {
-  background: linear-gradient(135deg, rgba(var(--card-background-rgb), 0.96), rgba(var(--theme-color-rgb), 0.08));
-}
-
-.user-pill-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  background: rgba(var(--theme-color-rgb), 0.1);
-  color: var(--theme-color);
-  flex-shrink: 0;
-}
-
-.user-pill-icon svg {
-  width: 16px;
-  height: 16px;
+  padding: 0 10px 0 6px;
 }
 
 .user-pill-text {

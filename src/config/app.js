@@ -2,7 +2,7 @@
 export const APP_BASE_PATH = '/new/'
 
 // 本地调试时指向正式服务器；部署到同源环境时改成 '' 即可。
-export const API_BASE_URL = '' // 'https://qbsg.top'
+export const API_BASE_URL = 'https://qbsg.top'
 
 export function buildApiUrl(path = '') {
   if (!API_BASE_URL) {

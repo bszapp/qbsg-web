@@ -6,15 +6,6 @@
         <div class="page-title-row">
           <div>
             <h1 class="page-title">账户充值与用户信息</h1>
-            <p class="page-subtitle">
-              这里展示当前账号信息、积分余额、充值入口，以及订单号手动确认到账能力。个人设置仅从右上角用户名菜单进入。
-            </p>
-          </div>
-
-          <div class="hero-actions">
-            <button type="button" class="secondary-button" @click="refreshInfo" :disabled="loadingProfile">
-              {{ loadingProfile ? '刷新中...' : '刷新信息' }}
-            </button>
           </div>
         </div>
 
@@ -40,14 +31,9 @@
           </div>
 
           <div class="suggest-grid">
-            <button
-              v-for="suggestion in suggestions"
-              :key="suggestion.points"
-              type="button"
-              class="suggest-card"
+            <button v-for="suggestion in suggestions" :key="suggestion.points" type="button" class="suggest-card"
               :class="{ active: selectedPointsNumber === suggestion.points }"
-              @click="selectSuggestion(suggestion.points)"
-            >
+              @click="selectSuggestion(suggestion.points)">
               <strong>{{ suggestion.points }} 积分</strong>
               <span :class="suggestion.too_small ? 'muted' : ''">¥{{ suggestion.amount_yuan }}</span>
               <em v-if="!suggestion.too_small && suggestion.discount_rate < 1">
@@ -69,13 +55,7 @@
           <div class="field-grid recharge-grid">
             <div class="field-group">
               <label class="field-label">自定义积分数</label>
-              <input
-                v-model="selectedPoints"
-                type="number"
-                min="1"
-                class="text-input"
-                placeholder="输入需要充值的积分"
-              />
+              <input v-model="selectedPoints" type="number" min="1" class="text-input" placeholder="输入需要充值的积分" />
             </div>
 
             <div class="field-group">
@@ -109,29 +89,15 @@
             </div>
           </div>
 
-          <div class="callout-box">
-            支付成功提示在抓包目录中没有定位到可直接复用的撒花弹窗资源，因此这里按你的要求使用普通 toast 提示“支付成功”。
-          </div>
-
           <div class="field-group claim-group">
             <label class="field-label">商家订单号</label>
-            <input
-              v-model="claimOrderNo"
-              type="text"
-              class="text-input"
-              placeholder="输入支付时生成的订单号"
-            />
+            <input v-model="claimOrderNo" type="text" class="text-input" placeholder="输入支付时生成的订单号" />
           </div>
 
           <div class="button-row">
             <button type="button" class="primary-button" @click="claimOrder" :disabled="claimingOrder">
               {{ claimingOrder ? '确认中...' : '确认到账' }}
             </button>
-          </div>
-
-          <div class="badge-row">
-            <span class="soft-badge">当前账号：{{ authState.user?.username || '-' }}</span>
-            <span class="soft-badge">当前积分：{{ authState.user?.points ?? '-' }}</span>
           </div>
         </section>
       </div>
@@ -414,7 +380,6 @@ onMounted(async () => {
 
 .suggest-card.active {
   border-color: rgba(var(--theme-color-rgb), 0.46);
-  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.13), rgba(var(--card-background-rgb), 0.96));
   box-shadow: 0 12px 28px rgba(var(--theme-color-rgb), 0.14);
 }
 
@@ -460,7 +425,6 @@ onMounted(async () => {
   margin-top: 18px;
   padding: 18px;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(var(--success-color-rgb), 0.08), rgba(var(--card-background-rgb), 0.98));
   border: 1px solid rgba(var(--success-color-rgb), 0.16);
 }
 

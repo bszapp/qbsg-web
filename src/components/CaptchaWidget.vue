@@ -1,7 +1,7 @@
 <template>
   <div class="captcha-box" :class="`state-${status}`">
-    <div v-if="status !== 'ready'" class="captcha-placeholder">
-      <span>{{ placeholderText }}</span>
+    <div v-if="status === 'loading'" class="captcha-placeholder">
+      <span>正在加载验证组件...</span>
     </div>
     <div ref="hostRef" class="captcha-host" />
   </div>
@@ -163,7 +163,7 @@ async function renderWidget() {
       'error-callback'() {
         emit('update:modelValue', '')
         status.value = 'error'
-        emit('error', new Error('验证组件加载失败，请刷新页面重试'))
+        emit('error', '验证失败，请重试')
       },
     })
 
@@ -172,7 +172,7 @@ async function renderWidget() {
   } catch (error) {
     status.value = 'error'
     emit('update:modelValue', '')
-    emit('error', error)
+    emit('error', error.message || '验证组件加载失败，请刷新页面重试')
   }
 }
 
@@ -209,7 +209,6 @@ onBeforeUnmount(() => {
   padding: 12px;
   font-size: 13px;
   color: var(--secondary-text-color);
-  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.06), rgba(var(--card-background-rgb), 0.9));
   z-index: 1;
 }
 
