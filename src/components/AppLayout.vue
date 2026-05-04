@@ -202,9 +202,11 @@ const {
 } = useAuth()
 
 const hasPreviousInternalRoute = ref(false)
+const previousRoute = ref(null)
 router.beforeEach((to, from) => {
   if (from.name !== undefined) {
     hasPreviousInternalRoute.value = true
+    previousRoute.value = from
   }
 })
 
