@@ -129,31 +129,29 @@
   <!-- 主内容区 -->
   <div class="main-board">
     <div class="content-area">
-      <Transition name="page-transition" mode="out-in">
-        <div v-if="showRouteLoading" key="loading" class="auth-state-card">
-          <p class="auth-state-title">正在验证登录状态</p>
-          <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
-        </div>
+      <div v-if="showRouteLoading" class="auth-state-card">
+        <p class="auth-state-title">正在验证登录状态</p>
+        <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
+      </div>
 
-        <div v-else-if="showAuthRequired" key="auth-required" class="auth-state-card">
-          <div class="auth-required-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-              stroke-linejoin="round">
-              <rect x="5" y="11" width="14" height="10" rx="2" />
-              <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-            </svg>
-          </div>
-          <p class="auth-state-title">需要登录才能访问</p>
-          <p class="auth-state-desc">此页面需要登录后才能查看，请先登录或注册账户。</p>
-          <button class="auth-state-btn" @click="openAuthModal('login', false)">立即登录</button>
+      <div v-else-if="showAuthRequired" class="auth-state-card">
+        <div class="auth-required-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round">
+            <rect x="5" y="11" width="14" height="10" rx="2" />
+            <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+          </svg>
         </div>
+        <p class="auth-state-title">需要登录才能访问</p>
+        <p class="auth-state-desc">此页面需要登录后才能查看，请先登录或注册账户。</p>
+        <button class="auth-state-btn" @click="openAuthModal('login', false)">立即登录</button>
+      </div>
 
-        <RouterView v-else key="page" v-slot="{ Component }">
-          <Transition name="page-transition" mode="out-in">
-            <component :is="Component" :key="$route.path" />
-          </Transition>
-        </RouterView>
-      </Transition>
+      <RouterView v-else v-slot="{ Component }">
+        <Transition name="page-transition" mode="out-in">
+          <component :is="Component" :key="$route.path" />
+        </Transition>
+      </RouterView>
     </div>
   </div>
 </template>

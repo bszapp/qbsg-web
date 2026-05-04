@@ -48,7 +48,7 @@
             <div class="other-platforms">
               <button class="platform-btn platform-btn--ios" disabled>
                 <i class="fa-brands fa-apple"></i>
-                <span>iOS 版<br><small>敬请期待</small></span>
+                <span>Windows 版<br><small>即将发布</small></span>
               </button>
               <button class="platform-btn platform-btn--harmony" disabled>
                 <i class="fa-solid fa-circle-nodes"></i>

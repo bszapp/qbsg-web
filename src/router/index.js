@@ -36,9 +36,9 @@ const AccountSettings = () => import('../views/AccountSettings.vue')
 
 export const navItems = [
   { path: '/', name: 'home', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
-  { path: '/shop', name: 'shop', label: '资源', icon: ShopIcon, component: Shop, requiresAuth: false },
+  { path: '/shop', name: 'shop', label: '教程', icon: OrdersIcon, component: Shop, requiresAuth: false },
   { path: '/nodes', name: 'nodes', label: '固件', icon: NodesIcon, component: Nodes, requiresAuth: false },
-  { path: '/activation', name: 'activation', label: '激活码', icon: OrdersIcon, component: Orders, requiresAuth: true },
+  { path: '/activation', name: 'activation', label: '激活码', icon: ShopIcon, component: Orders, requiresAuth: true },
   { path: '/me', name: 'me', label: '我的', icon: AccountIcon, component: Account, requiresAuth: true },
 ]
 
