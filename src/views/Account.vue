@@ -137,12 +137,14 @@
                     <span>二维码不可用</span>
                   </div>
                 </template>
-
                 <!-- 二维码下方始终显示 URL -->
                 <a class="qr-url-link" :href="orderResult?.directUrl || orderResult?.payUrl" target="_blank"
                   rel="noopener noreferrer">
                   {{ orderResult?.directUrl || orderResult?.payUrl }}
                 </a>
+
+                <p class="qr-notice-text">二维码由支付宝官方前端提供，时效性短，如果失效请点击下方访问原始支付链接刷新二维码</p>
+
               </div>
 
               <!-- 订单信息 -->
@@ -159,32 +161,24 @@
 
               <!-- 操作按钮组 -->
               <div class="pay-action-group">
-                <button v-if="orderResult?.directScheme" type="button" class="pay-action-btn btn-alipay"
-                  @click="openDirectScheme">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-                    <path d="M8 12l2 2 4-4" />
-                  </svg>
-                  直接打开支付宝
-                </button>
+                <div class="pay-btn-row">
+                  <button v-if="orderResult?.directScheme" type="button" class="pay-action-btn btn-alipay"
+                    @click="openDirectScheme">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                      <path d="M8 12l2 2 4-4" />
+                    </svg>
+                    打开支付宝
+                  </button>
 
-                <button v-if="orderResult?.directUrl" type="button" class="pay-action-btn btn-direct"
-                  @click="openDirectUrl">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                    <polyline points="15,3 21,3 21,9" />
-                    <line x1="10" y1="14" x2="21" y2="3" />
-                  </svg>
-                  直链跳转
-                </button>
-
-                <button type="button" class="pay-action-btn btn-origin" @click="openPayUrl">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                  </svg>
-                  原始 URL 跳转
-                </button>
+                  <button type="button" class="pay-action-btn btn-origin" @click="openPayUrl">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                    原始 URL 跳转
+                  </button>
+                </div>
               </div>
 
               <!-- 已完成支付 -->
@@ -213,6 +207,10 @@ import QRCode from 'qrcode'
 import { useToast } from '../composables/useToast.js'
 import { useAuth } from '../composables/useAuth.js'
 import { normalizeMessage, postJson } from '../services/api.js'
+import { useConfetti } from '../composables/useConfetti.js'
+
+
+const { triggerConfetti } = useConfetti()
 
 const { showToast } = useToast()
 const { state: authState, refreshProfile, updateUser, handleAuthFailure } = useAuth()
@@ -423,8 +421,7 @@ async function claimOrder(options = {}) {
     })
 
     if (data.type === 'success') {
-      const successMessage = normalizeMessage(data, '支付成功，积分已到账')
-      showToast(successMessage, 'success', 3600)
+      triggerConfetti('支付成功', data.message)
       await refreshProfile({ silent: true, showAuthToast: true })
       if (typeof data.points !== 'undefined') {
         updateUser({ points: data.points })
@@ -482,7 +479,6 @@ onMounted(async () => {
   await handleReturnOrder()
 })
 </script>
-
 <style scoped>
 .account-stats {
   margin-top: 22px;
@@ -593,7 +589,6 @@ onMounted(async () => {
   margin: 18px 0;
 }
 
-/* ===== 支付弹窗结构（照抄注销/改密码弹窗）===== */
 .auth-popup-overlay {
   position: fixed;
   top: 0;
@@ -671,7 +666,6 @@ onMounted(async () => {
   background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
 }
 
-/* ===== 二维码区域 ===== */
 .qr-section {
   display: flex;
   flex-direction: column;
@@ -707,6 +701,16 @@ onMounted(async () => {
   font-size: 13px;
 }
 
+.qr-notice-text {
+  margin: 4px 0;
+  font-size: 11px;
+  color: var(--secondary-text-color);
+  opacity: 0.9;
+  text-align: center;
+  line-height: 1.4;
+  max-width: 280px;
+}
+
 .qr-url-link {
   font-size: 11px;
   color: var(--secondary-text-color);
@@ -724,7 +728,6 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-/* ===== 订单信息 ===== */
 .pay-order-meta {
   display: flex;
   flex-direction: column;
@@ -753,12 +756,19 @@ onMounted(async () => {
   text-align: right;
 }
 
-/* ===== 操作按钮组 ===== */
 .pay-action-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   margin-bottom: 16px;
+}
+
+.pay-btn-row {
+  display: flex;
+  gap: 8px;
+}
+
+.pay-btn-row .pay-action-btn {
+  flex: 1;
+  padding: 0 4px;
+  white-space: nowrap;
 }
 
 .pay-action-btn {
@@ -787,17 +797,6 @@ onMounted(async () => {
   border-color: rgba(22, 119, 255, 0.5);
 }
 
-.btn-direct {
-  background: rgba(var(--theme-color-rgb), 0.05);
-  border-color: rgba(var(--theme-color-rgb), 0.22);
-  color: var(--theme-color);
-}
-
-.btn-direct:hover {
-  background: rgba(var(--theme-color-rgb), 0.1);
-  border-color: rgba(var(--theme-color-rgb), 0.4);
-}
-
 .btn-origin {
   background: rgba(var(--text-color-rgb), 0.04);
   border-color: rgba(var(--text-color-rgb), 0.12);
@@ -810,7 +809,6 @@ onMounted(async () => {
   color: var(--text-color);
 }
 
-/* ===== 确认支付按钮 ===== */
 .btn {
   height: 45px;
   width: 100%;
@@ -862,7 +860,6 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* ===== 动画（与 AccountSettings 完全一致）===== */
 .auth-popup-fade-enter-active {
   transition: opacity 0.3s ease;
 }
