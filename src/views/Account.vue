@@ -71,14 +71,6 @@
               {{ creatingOrder ? '创建订单中...' : '发起充值' }}
             </button>
           </div>
-
-          <div v-if="orderResult" class="order-box">
-            <p><span>商家订单号</span><strong>{{ orderResult.orderNo }}</strong></p>
-            <button type="button" class="pay-now-btn" @click="openPayUrl">
-              前往支付
-            </button>
-            <p class="tip-text">支付成功后会自动到账；若未自动到账，可在右侧输入订单号手动确认。</p>
-          </div>
         </section>
 
         <section class="panel-card">
@@ -103,10 +95,121 @@
       </div>
     </div>
   </div>
+
+  <!-- ===== 支付弹窗 ===== -->
+  <Teleport to="body">
+    <Transition name="auth-popup-fade">
+      <div v-if="showPayModal" class="auth-popup-overlay" @click.self="closePayModal">
+        <Transition name="auth-popup-slide" appear>
+          <div v-if="showPayModal" class="auth-popup-container pay-modal-container">
+            <div class="auth-popup-header">
+              <h2 class="popup-title">完成支付</h2>
+              <button class="popup-close-btn" type="button" @click="closePayModal">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 6l-12 12" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div class="auth-popup-content">
+              <!-- 二维码区域（有 direct_url 时显示） -->
+              <div class="qr-section">
+                <template v-if="orderResult?.directUrl">
+                  <div class="qr-wrap">
+                    <canvas ref="qrCanvas" class="qr-canvas"></canvas>
+                  </div>
+                </template>
+                <template v-else>
+                  <div class="qr-placeholder">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48"
+                      height="48">
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                      <rect x="5" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                      <rect x="16" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                      <rect x="5" y="16" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                      <path d="M14 14h2v2h-2zM18 14h3v2h-3zM14 18h2v3h-2zM18 18h3v3h-3z" fill="currentColor"
+                        stroke="none" />
+                    </svg>
+                    <span>二维码不可用</span>
+                  </div>
+                </template>
+
+                <!-- 二维码下方始终显示 URL -->
+                <a class="qr-url-link" :href="orderResult?.directUrl || orderResult?.payUrl" target="_blank"
+                  rel="noopener noreferrer">
+                  {{ orderResult?.directUrl || orderResult?.payUrl }}
+                </a>
+              </div>
+
+              <!-- 订单信息 -->
+              <div class="pay-order-meta">
+                <div class="pay-meta-row">
+                  <span class="pay-meta-label">商家订单号</span>
+                  <strong class="pay-meta-value">{{ orderResult?.orderNo }}</strong>
+                </div>
+                <div class="pay-meta-row">
+                  <span class="pay-meta-label">支付金额</span>
+                  <strong class="pay-meta-value">¥{{ orderResult?.amountYuan }}</strong>
+                </div>
+              </div>
+
+              <!-- 操作按钮组 -->
+              <div class="pay-action-group">
+                <button v-if="orderResult?.directScheme" type="button" class="pay-action-btn btn-alipay"
+                  @click="openDirectScheme">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                    <path d="M8 12l2 2 4-4" />
+                  </svg>
+                  直接打开支付宝
+                </button>
+
+                <button v-if="orderResult?.directUrl" type="button" class="pay-action-btn btn-direct"
+                  @click="openDirectUrl">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15,3 21,3 21,9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                  直链跳转
+                </button>
+
+                <button type="button" class="pay-action-btn btn-origin" @click="openPayUrl">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                  原始 URL 跳转
+                </button>
+              </div>
+
+              <!-- 已完成支付 -->
+              <button type="button" class="btn btn-primary btn-block pay-confirm-btn" @click="handleClaimFromModal"
+                :disabled="claimingOrder">
+                <span>{{ claimingOrder ? '确认中...' : '我已完成支付' }}</span>
+                <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 12h14" />
+                  <path d="m13 6 6 6-6 6" />
+                </svg>
+              </button>
+
+              <p class="pay-tip-text">支付成功后点击"我已完成支付"完成积分到账；若长时间未到账可在右侧输入订单号手动确认。</p>
+            </div>
+          </div>
+        </Transition>
+      </div>
+    </Transition>
+  </Teleport>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import QRCode from 'qrcode'
 import { useToast } from '../composables/useToast.js'
 import { useAuth } from '../composables/useAuth.js'
 import { normalizeMessage, postJson } from '../services/api.js'
@@ -122,12 +225,56 @@ const claimingOrder = ref(false)
 const selectedPoints = ref('')
 const claimOrderNo = ref('')
 const orderResult = ref(null)
+const showPayModal = ref(false)
+const qrCanvas = ref(null)
+
+// 打开支付宝 URL Scheme（失败静默）
+function tryOpenScheme(scheme) {
+  if (!scheme) return
+  try {
+    window.location.href = scheme
+  } catch {
+    // 忽略：未安装支付宝或桌面端
+  }
+}
+
+function openDirectScheme() {
+  if (orderResult.value?.directScheme) {
+    tryOpenScheme(orderResult.value.directScheme)
+  }
+}
+
+function openDirectUrl() {
+  if (orderResult.value?.directUrl) {
+    window.open(orderResult.value.directUrl, '_blank', 'noopener,noreferrer')
+  }
+}
 
 function openPayUrl() {
   if (orderResult.value?.payUrl) {
-    window.location.href = orderResult.value.payUrl
+    window.open(orderResult.value.payUrl, '_blank', 'noopener,noreferrer')
   }
 }
+
+function closePayModal() {
+  showPayModal.value = false
+}
+
+// 弹窗打开后渲染二维码
+watch([showPayModal, qrCanvas], async ([visible]) => {
+  if (!visible) return
+  await nextTick()
+  if (!qrCanvas.value || !orderResult.value?.directUrl) return
+  try {
+    await QRCode.toCanvas(qrCanvas.value, orderResult.value.directUrl, {
+      width: 220,
+      margin: 2,
+      color: { dark: '#000000', light: '#ffffff' },
+    })
+  } catch {
+    // 二维码生成失败时静默处理
+  }
+})
 
 const selectedPointsNumber = computed(() => {
   const value = Number.parseInt(selectedPoints.value, 10)
@@ -227,12 +374,22 @@ async function createRechargeOrder() {
       orderResult.value = {
         orderNo: data.order_no,
         payUrl: data.pay_url,
+        amountYuan: data.amount_yuan,
+        points: data.points,
+        discountRate: data.discount_rate,
+        // qrExtra 字段（可能不存在）
+        directUrl: data.direct_url || null,
+        directScheme: data.direct_scheme || null,
       }
       claimOrderNo.value = data.order_no
-      showToast('订单创建成功，1 秒后自动跳转支付...', 'success', 3200)
-      setTimeout(() => {
-        window.location.href = data.pay_url
-      }, 1000)
+      showPayModal.value = true
+
+      // 弹窗打开后立即尝试 URL Scheme 唤起支付宝（失败静默）
+      if (data.direct_scheme) {
+        await nextTick()
+        tryOpenScheme(data.direct_scheme)
+      }
+
       return
     }
 
@@ -290,6 +447,14 @@ async function claimOrder(options = {}) {
     return false
   } finally {
     claimingOrder.value = false
+  }
+}
+
+// 弹窗内"我已完成支付"按钮
+async function handleClaimFromModal() {
+  const success = await claimOrder()
+  if (success) {
+    closePayModal()
   }
 }
 
@@ -424,59 +589,340 @@ onMounted(async () => {
   border-color: rgba(var(--error-color-rgb), 0.18);
 }
 
-.order-box {
-  margin-top: 18px;
-  padding: 18px;
-  border-radius: 20px;
-  border: 1px solid rgba(var(--success-color-rgb), 0.16);
+.claim-group {
+  margin: 18px 0;
 }
 
-.order-box p {
-  margin: 0;
+/* ===== 支付弹窗结构（照抄注销/改密码弹窗）===== */
+.auth-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  box-sizing: border-box;
+  backdrop-filter: blur(4px);
+}
+
+.auth-popup-container {
+  width: 100%;
+  max-width: 500px;
+  background-color: rgba(var(--card-background-rgb), 1);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(var(--theme-color-rgb), 0.15);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+}
+
+.pay-modal-container {
+  max-width: 420px;
+}
+
+.auth-popup-header {
+  padding: 20px;
   display: flex;
   justify-content: space-between;
-  gap: 16px;
-  align-items: baseline;
-  color: var(--secondary-text-color);
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  background-color: rgba(var(--theme-color-rgb), 0.03);
+  flex-shrink: 0;
 }
 
-.order-box strong {
+.popup-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-color);
+}
+
+.popup-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--secondary-text-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  margin: -8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.popup-close-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+  transform: rotate(90deg);
+}
+
+.auth-popup-content {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
+}
+
+/* ===== 二维码区域 ===== */
+.qr-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: rgba(var(--text-color-rgb), 0.02);
+  border-radius: 14px;
+  border: 1px solid rgba(var(--text-color-rgb), 0.06);
+}
+
+.qr-wrap {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px;
+  display: inline-flex;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+}
+
+.qr-canvas {
+  display: block;
+  border-radius: 6px;
+}
+
+.qr-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 0 12px;
+  color: var(--secondary-text-color);
+  font-size: 13px;
+}
+
+.qr-url-link {
+  font-size: 11px;
+  color: var(--secondary-text-color);
+  text-decoration: none;
+  word-break: break-all;
+  text-align: center;
+  line-height: 1.5;
+  max-width: 100%;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.qr-url-link:hover {
+  color: var(--theme-color);
+  text-decoration: underline;
+}
+
+/* ===== 订单信息 ===== */
+.pay-order-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pay-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.pay-meta-label {
+  color: var(--secondary-text-color);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pay-meta-value {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   color: var(--text-color);
   word-break: break-all;
   text-align: right;
 }
 
-.pay-now-btn {
-  display: inline-flex;
+/* ===== 操作按钮组 ===== */
+.pay-action-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pay-action-btn {
+  display: flex;
   align-items: center;
-  margin: 16px 0 10px;
-  padding: 10px 22px;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
   border-radius: 10px;
-  border: none;
-  background: var(--theme-color);
-  color: #fff;
-  font-weight: 700;
-  font-size: 15px;
+  border: 1px solid;
+  font-size: 14px;
+  font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s ease;
 }
 
-.pay-now-btn:hover {
-  opacity: 0.88;
+.btn-alipay {
+  background: rgba(22, 119, 255, 0.06);
+  border-color: rgba(22, 119, 255, 0.28);
+  color: #1677ff;
 }
 
-.claim-group {
-  margin: 18px 0;
+.btn-alipay:hover {
+  background: rgba(22, 119, 255, 0.12);
+  border-color: rgba(22, 119, 255, 0.5);
+}
+
+.btn-direct {
+  background: rgba(var(--theme-color-rgb), 0.05);
+  border-color: rgba(var(--theme-color-rgb), 0.22);
+  color: var(--theme-color);
+}
+
+.btn-direct:hover {
+  background: rgba(var(--theme-color-rgb), 0.1);
+  border-color: rgba(var(--theme-color-rgb), 0.4);
+}
+
+.btn-origin {
+  background: rgba(var(--text-color-rgb), 0.04);
+  border-color: rgba(var(--text-color-rgb), 0.12);
+  color: var(--secondary-text-color);
+}
+
+.btn-origin:hover {
+  background: rgba(var(--text-color-rgb), 0.08);
+  border-color: rgba(var(--text-color-rgb), 0.2);
+  color: var(--text-color);
+}
+
+/* ===== 确认支付按钮 ===== */
+.btn {
+  height: 45px;
+  width: 100%;
+  border-radius: 8px;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+.btn-primary {
+  background-color: var(--theme-color);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: rgba(var(--theme-color-rgb), 0.92);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-block {
+  display: flex;
+}
+
+.pay-confirm-btn {
+  margin-bottom: 12px;
+}
+
+.icon-right {
+  width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  flex-shrink: 0;
+}
+
+.pay-tip-text {
+  margin: 0;
+  font-size: 12px;
+  color: var(--secondary-text-color);
+  line-height: 1.6;
+  text-align: center;
+}
+
+/* ===== 动画（与 AccountSettings 完全一致）===== */
+.auth-popup-fade-enter-active {
+  transition: opacity 0.3s ease;
+}
+
+.auth-popup-fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.auth-popup-fade-enter-from,
+.auth-popup-fade-leave-to {
+  opacity: 0;
+}
+
+.auth-popup-slide-enter-active {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.auth-popup-slide-leave-active {
+  transition: all 0.2s ease-out;
+}
+
+.auth-popup-slide-enter-from {
+  opacity: 0;
+  transform: translateY(20px) scale(0.98);
+}
+
+.auth-popup-slide-leave-to {
+  opacity: 0;
+  transform: scale(0.95);
 }
 
 @media (max-width: 768px) {
-  .order-box p {
-    flex-direction: column;
-    align-items: flex-start;
+  .auth-popup-overlay {
+    padding: 15px;
   }
 
-  .order-box strong {
+  .auth-popup-container {
+    max-width: 100%;
+    max-height: 90vh;
+  }
+
+  .auth-popup-header {
+    padding: 15px;
+  }
+
+  .popup-title {
+    font-size: 16px;
+  }
+
+  .auth-popup-content {
+    padding: 15px;
+  }
+
+  .pay-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .pay-meta-value {
     text-align: left;
   }
 }
