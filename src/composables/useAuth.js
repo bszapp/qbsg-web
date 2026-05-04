@@ -51,9 +51,15 @@ function updateUser(patch = {}) {
   }
 }
 
-function handleAuthFailure(payload, options = {}) {
-  const message = normalizeMessage(payload, '登录状态已过期，请重新登录')
+// token 相关的 errorCode，命中其中一个才视为鉴权失败并清除会话
+const AUTH_ERROR_CODES = ['token_missing', 'token_not_found', 'token_invalid']
 
+function handleAuthFailure(payload, options = {}) {
+  if (!AUTH_ERROR_CODES.includes(payload?.errorCode)) {
+    return false
+  }
+
+  const message = normalizeMessage(payload, '登录状态已过期，请重新登录')
   clearSession()
 
   if (options.showToast !== false) {

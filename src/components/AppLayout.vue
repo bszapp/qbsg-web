@@ -238,7 +238,8 @@ function handleAuthModalClose() {
 
   if (shouldRedirectBack && !isAuthenticated.value) {
     const currentBase = window.location.href.split('#')[0]
-    if (hasPreviousInternalRoute.value) {
+    const prevRequiresAuth = previousRoute.value?.meta?.requiresAuth
+    if (hasPreviousInternalRoute.value && !prevRequiresAuth) {
       router.back()
     } else {
       window.location.replace(currentBase + '#/')
