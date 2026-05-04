@@ -1,6 +1,6 @@
 import { computed, reactive, readonly } from 'vue'
 import { useToast } from './useToast.js'
-import { normalizeMessage, postJson } from '../services/api.js'
+import { normalizeMessage, postJson, setAuthFailureHandler } from '../services/api.js'
 
 const TOKEN_STORAGE_KEY = 'xfltd_user_token'
 
@@ -23,8 +23,10 @@ function saveToken(token) {
 }
 
 function clearSession() {
+  console.log('[useAuth] clearSession 执行，清除 token 和 user')
   saveToken('')
   state.user = null
+  console.log('[useAuth] clearSession 完毕，state.token:', state.token, '| state.user:', state.user)
 }
 
 function buildUser(payload = {}) {
@@ -54,19 +56,42 @@ function updateUser(patch = {}) {
 // token 相关的 errorCode，命中其中一个才视为鉴权失败并清除会话
 const AUTH_ERROR_CODES = ['token_missing', 'token_not_found', 'token_invalid']
 
+// 模块初始化时注册到 api.js，使所有 postJson 请求都能自动拦截 token 失效
+console.log('[useAuth] 模块初始化，注册 authFailureHandler')
+setAuthFailureHandler((payload) => handleAuthFailure(payload))
+
 function handleAuthFailure(payload, options = {}) {
+  console.group('[useAuth] handleAuthFailure 触发')
+  console.log('payload.errorCode:', payload?.errorCode)
+  console.log('payload._authHandled:', payload?._authHandled)
+  console.log('AUTH_ERROR_CODES 命中:', AUTH_ERROR_CODES.includes(payload?.errorCode))
+  console.log('当前 state.token:', state.token)
+
+  // 已由 postJson 统一处理过，直接返回 true 让调用方正常 early-return，不重复操作
+  if (payload?._authHandled) {
+    console.log('→ 已被 postJson 处理过，跳过，返回 true')
+    console.groupEnd()
+    return true
+  }
+
   if (!AUTH_ERROR_CODES.includes(payload?.errorCode)) {
+    console.log('→ errorCode 不在 AUTH_ERROR_CODES 中，返回 false')
+    console.groupEnd()
     return false
   }
 
   const message = normalizeMessage(payload, '登录状态已过期，请重新登录')
+  console.log('→ 触发 clearSession，message:', message)
   clearSession()
+  console.log('→ clearSession 执行完毕，state.token:', state.token, '| state.user:', state.user)
 
   if (options.showToast !== false) {
     const { showToast } = useToast()
     showToast(options.authMessage || message || '登录状态已过期，请重新登录', 'warning', 3600)
   }
 
+  console.log('→ handleAuthFailure 完成，返回 true')
+  console.groupEnd()
   return true
 }
 

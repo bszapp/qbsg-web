@@ -303,6 +303,20 @@ watch(() => [route.meta.requiresAuth, isAuthenticated.value], ([requiresAuth, au
     redirectBackOnClose.value = false
   }
 })
+
+// token 在当前页被清除（如过期）时，若处于需要登录的页面，自动弹出登录框
+watch(isAuthenticated, (newVal, oldVal) => {
+  console.group('[AppLayout] isAuthenticated watcher 触发')
+  console.log('oldVal:', oldVal, '→ newVal:', newVal)
+  console.log('route.path:', route.path, '| route.meta.requiresAuth:', route.meta.requiresAuth)
+  console.log('条件满足（应弹窗）:', oldVal === true && newVal === false && route.meta.requiresAuth)
+  if (oldVal === true && newVal === false && route.meta.requiresAuth) {
+    console.log('→ 执行 openAuthModal')
+    openAuthModal('login', true)
+  }
+  console.groupEnd()
+})
+
 onMounted(() => {
   nextTick(updateIndicator)
   window.addEventListener('resize', updateIndicator)
