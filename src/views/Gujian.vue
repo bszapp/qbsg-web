@@ -1,28 +1,11 @@
 <template>
-  <div class="page-shell">
-    <div class="page-stack">
-      <section class="hero-card">
-        <span class="page-eyebrow">固件库</span>
-        <div class="page-title-row">
-          <div>
-            <h1 class="page-title">固件浏览</h1>
-            <p class="page-subtitle">
-              浏览所有可用固件版本，点击分组的「获取激活码」跳转激活页面并自动填入。
-            </p>
-          </div>
-          <div class="hero-actions">
-            <button type="button" class="secondary-button" @click="loadCatalog" :disabled="loading">
-              {{ loading ? '加载中...' : '刷新列表' }}
-            </button>
-          </div>
-        </div>
-      </section>
+  <div class="gujian-page">
+    <div v-if="loadError" class="callout-box callout-box-error">{{ loadError }}</div>
+    <div v-else-if="loading && !groups.length" class="callout-box">正在加载固件列表...</div>
 
-      <div v-if="loadError" class="callout-box callout-box-error">{{ loadError }}</div>
-      <div v-else-if="loading && !groups.length" class="callout-box">正在加载固件列表...</div>
-
-      <template v-else>
-        <section v-for="(group, gi) in groups" :key="gi" class="panel-card">
+    <template v-else>
+      <template v-if="filteredGroups.length">
+        <section v-for="(group, gi) in filteredGroups" :key="gi" class="panel-card">
           <div class="section-header">
             <div>
               <div class="group-label-row">
@@ -67,7 +50,16 @@
           </div>
         </section>
       </template>
-    </div>
+
+      <div v-else class="empty-state">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+          stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <p>未找到匹配的固件</p>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -76,24 +68,17 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { postJson } from '../services/api.js'
 import { useToast } from '../composables/useToast.js'
+import { useGujianFilter } from '../composables/useGujianFilter.js'
 
 const { showToast } = useToast()
 const router = useRouter()
 
-const groups = ref([])
+const { groups, filteredGroups, sizeClass } = useGujianFilter()
+
 const loading = ref(false)
 const loadError = ref('')
 
-const SIZE_CLASS = {
-  '2.13H': 'size-213h',
-  '2.13': 'size-213',
-  '2.9': 'size-29',
-  '4.2': 'size-42',
-}
-
-function sizeClass(s) {
-  return SIZE_CLASS[s] || 'size-213'
-}
+onMounted(loadCatalog)
 
 async function loadCatalog() {
   loading.value = true
@@ -117,23 +102,18 @@ async function loadCatalog() {
 function goActivate(group) {
   router.push({
     path: '/activation',
-    query: {
-      provider: group.provider,
-      activation_id: group.activation_id,
-    },
+    query: { provider: group.provider, activation_id: group.activation_id },
   })
 }
-
-onMounted(() => {
-  loadCatalog()
-})
 </script>
 
 <style scoped>
-.callout-box-error {
-  color: var(--error-color);
-  border-color: rgba(var(--error-color-rgb), 0.18);
-  background: rgba(var(--error-color-rgb), 0.08);
+.gujian-page {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .group-label-row {
@@ -159,7 +139,6 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-/* ── 固件网格 ── */
 .fw-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -182,7 +161,6 @@ onMounted(() => {
   box-shadow: 0 8px 20px rgba(var(--theme-color-rgb), 0.08);
 }
 
-/* 缩略图 */
 .fw-thumb {
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -205,7 +183,7 @@ onMounted(() => {
   justify-content: center;
   width: 100%;
   height: 100%;
-  color: rgba(var(--text-color-rgb), 0.2);
+  color: rgba(var(--text-color-rgb), 0.18);
 }
 
 .fw-thumb-icon svg {
@@ -213,7 +191,6 @@ onMounted(() => {
   height: 36px;
 }
 
-/* 内容区 */
 .fw-body {
   flex: 1;
   padding: 12px 12px 8px;
@@ -242,11 +219,10 @@ onMounted(() => {
   margin-top: 4px;
   font-size: 10px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  color: rgba(var(--text-color-rgb), 0.4);
+  color: rgba(var(--text-color-rgb), 0.35);
   word-break: break-all;
 }
 
-/* 尺寸徽标 */
 .size-badge {
   display: inline-block;
   padding: 1px 7px;
@@ -276,7 +252,6 @@ onMounted(() => {
   color: #9632c8;
 }
 
-/* 底部操作 */
 .fw-foot {
   padding: 8px 12px 12px;
 }
@@ -304,8 +279,30 @@ onMounted(() => {
   display: block;
   text-align: center;
   font-size: 12px;
-  color: rgba(var(--text-color-rgb), 0.3);
+  color: rgba(var(--text-color-rgb), 0.28);
   padding: 6px 0;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 64px 24px;
+  text-align: center;
+  color: rgba(var(--text-color-rgb), 0.3);
+  font-size: 14px;
+}
+
+.empty-state svg {
+  width: 40px;
+  height: 40px;
+}
+
+.callout-box-error {
+  color: var(--error-color);
+  border-color: rgba(var(--error-color-rgb), 0.18);
+  background: rgba(var(--error-color-rgb), 0.08);
 }
 
 @media (max-width: 768px) {

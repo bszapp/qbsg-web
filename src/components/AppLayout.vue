@@ -126,34 +126,90 @@
   <ConfettiOverlay />
   <ToastNotification />
 
-  <!-- 主内容区 -->
-  <div class="main-board">
-    <div class="content-area">
-      <div v-if="showRouteLoading" class="auth-state-card">
-        <p class="auth-state-title">正在验证登录状态</p>
-        <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
-      </div>
-
-      <div v-else-if="showAuthRequired" class="auth-state-card">
-        <div class="auth-required-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+  <!-- 固件页专用搜索栏（固定，与导航栏同级）-->
+  <Transition name="page-transition">
+    <div v-if="isGujianPage" ref="gujianSearchRef" class="gujian-search-fixed">
+      <div class="gujian-search-input-wrap">
+        <svg class="gujian-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8" />
+          <path d="m21 21-4.35-4.35" />
+        </svg>
+        <input v-model="fwSearchQuery" class="gujian-search-input" type="text" placeholder="搜索固件名称或 ID…"
+          autocomplete="off" spellcheck="false" />
+        <button v-if="fwSearchQuery" class="gujian-search-clear" @click="fwSearchQuery = ''">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
             stroke-linejoin="round">
-            <rect x="5" y="11" width="14" height="10" rx="2" />
-            <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+            <path d="M18 6 6 18M6 6l12 12" />
           </svg>
-        </div>
-        <p class="auth-state-title">需要登录才能访问</p>
-        <p class="auth-state-desc">此页面需要登录后才能查看，请先登录或注册账户。</p>
-        <button class="auth-state-btn" @click="openAuthModal('login', false)">立即登录</button>
+        </button>
       </div>
 
-      <RouterView v-else v-slot="{ Component }">
+      <div class="gujian-filter-row">
+        <span class="gujian-filter-label">作者</span>
+        <div class="gujian-tag-scroll">
+          <button :class="['gujian-tag-btn', fwActiveProvider === null ? 'gujian-tag-active' : '']"
+            @click="fwActiveProvider = null">全部</button>
+          <button v-for="p in fwAllProviders" :key="p"
+            :class="['gujian-tag-btn', fwActiveProvider === p ? 'gujian-tag-active' : '']"
+            @click="fwToggleProvider(p)">{{ p }}</button>
+        </div>
+      </div>
+
+      <div class="gujian-filter-row">
+        <span class="gujian-filter-label">尺寸</span>
+        <div class="gujian-tag-scroll">
+          <button :class="['gujian-tag-btn', fwActiveSize === null ? 'gujian-tag-active' : '']"
+            @click="fwActiveSize = null">全部</button>
+          <button v-for="s in fwAllSizes" :key="s"
+            :class="['gujian-tag-btn', 'gujian-tag-size', fwSizeTagClass(s), fwActiveSize === s ? 'gujian-tag-active' : '']"
+            @click="fwToggleSize(s)">{{ s }}</button>
+        </div>
+      </div>
+    </div>
+  </Transition>
+
+  <!-- 主内容区：固件页（自然撑开，无内部滚动）-->
+  <Transition name="page-transition">
+    <div v-if="isGujianPage" class="main-board main-board--gujian">
+      <RouterView v-slot="{ Component }">
         <Transition name="page-transition" mode="out-in">
           <component :is="Component" :key="$route.path" />
         </Transition>
       </RouterView>
     </div>
-  </div>
+  </Transition>
+
+  <!-- 主内容区：其他页面 -->
+  <Transition name="page-transition">
+    <div v-if="!isGujianPage" class="main-board">
+      <div class="content-area">
+        <div v-if="showRouteLoading" class="auth-state-card">
+          <p class="auth-state-title">正在验证登录状态</p>
+          <p class="auth-state-desc">稍等一下，我们正在同步你的账户信息。</p>
+        </div>
+
+        <div v-else-if="showAuthRequired" class="auth-state-card">
+          <div class="auth-required-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+              stroke-linejoin="round">
+              <rect x="5" y="11" width="14" height="10" rx="2" />
+              <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+            </svg>
+          </div>
+          <p class="auth-state-title">需要登录才能访问</p>
+          <p class="auth-state-desc">此页面需要登录后才能查看，请先登录或注册账户。</p>
+          <button class="auth-state-btn" @click="openAuthModal('login', false)">立即登录</button>
+        </div>
+
+        <RouterView v-else v-slot="{ Component }">
+          <Transition name="page-transition" mode="out-in">
+            <component :is="Component" :key="$route.path" />
+          </Transition>
+        </RouterView>
+      </div>
+    </div>
+  </Transition>
 </template>
 
 <script setup>
@@ -164,9 +220,22 @@ import ToastNotification from './ToastNotification.vue'
 import AuthGateModal from './AuthGateModal.vue'
 import { useAuth } from '../composables/useAuth.js'
 import ConfettiOverlay from './ConfettiOverlay.vue'
+import { useGujianFilter } from '../composables/useGujianFilter.js'
 
 // ---- 站点配置 ----
 const siteName = '签变时光'
+
+// ---- 固件页筛选状态（与 Gujian.vue 共享）----
+const {
+  searchQuery: fwSearchQuery,
+  activeProvider: fwActiveProvider,
+  activeSize: fwActiveSize,
+  allProviders: fwAllProviders,
+  allSizes: fwAllSizes,
+  toggleProvider: fwToggleProvider,
+  toggleSize: fwToggleSize,
+  sizeTagClass: fwSizeTagClass,
+} = useGujianFilter()
 
 // ---- 主题 ----
 const isDark = ref(false)
@@ -221,6 +290,28 @@ function isActive(path) {
 const showRouteLoading = computed(() => route.meta.requiresAuth && !isReady.value)
 const showAuthRequired = computed(() => route.meta.requiresAuth && isReady.value && !isAuthenticated.value)
 const displayName = computed(() => state.user?.username || '未登录')
+const isGujianPage = computed(() => route.path === '/gujian' || route.meta?.navPath === '/gujian')
+
+// ---- 固件搜索栏高度监测（设置 CSS 变量供布局使用）----
+const gujianSearchRef = ref(null)
+let fwSearchRo = null
+
+watch(isGujianPage, (val) => {
+  if (val) {
+    nextTick(() => {
+      if (gujianSearchRef.value) {
+        fwSearchRo = new ResizeObserver(entries => {
+          const h = entries[0].borderBoxSize?.[0]?.blockSize ?? entries[0].contentRect.height
+          document.documentElement.style.setProperty('--fw-search-h', h + 'px')
+        })
+        fwSearchRo.observe(gujianSearchRef.value)
+      }
+    })
+  } else {
+    fwSearchRo?.disconnect()
+    fwSearchRo = null
+  }
+}, { immediate: true })
 
 function openAuthModal(mode = 'login', redirectBack = false) {
   authMode.value = mode
@@ -384,6 +475,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   document.removeEventListener('click', handleOutsideClick)
+  fwSearchRo?.disconnect()
 })
 </script>
 
