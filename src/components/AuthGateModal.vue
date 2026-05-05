@@ -365,21 +365,7 @@ async function submitLogin() {
 }
 
 async function submitRegister() {
-  if (ok) {
-    if (loginForm.rememberMe) {
-      try {
-        localStorage.setItem(REMEMBER_ME_KEY, JSON.stringify({
-          username: loginForm.username.trim(),
-          password: loginForm.password,
-        }))
-      } catch {
-        // 忽略存储错误
-      }
-    } else {
-      localStorage.removeItem(REMEMBER_ME_KEY)
-    }
-    emitClose()
-  }
+
   if (submitting.value || !ensureRegisterForm()) {
     return
   }
