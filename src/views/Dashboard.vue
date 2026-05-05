@@ -18,7 +18,7 @@
           <div class="download-card">
             <div class="download-card-top">
               <div class="app-icon-wrap">
-                <i class="fa-solid fa-tablet-screen-button"></i>
+                <img src="/logo.png" alt="签变时光" class="app-logo-img" />
               </div>
               <div class="app-info">
                 <div class="app-name">签变时光</div>
@@ -47,7 +47,7 @@
 
             <div class="other-platforms">
               <button class="platform-btn platform-btn--ios" disabled>
-                <i class="fa-brands fa-apple"></i>
+                <i class="fa-brands fa-windows"></i>
                 <span>Windows 版<br><small>即将发布</small></span>
               </button>
               <button class="platform-btn platform-btn--harmony" disabled>
@@ -86,72 +86,51 @@
 
         </div>
       </section>
-      <section class="dash-section">
-        <!-- ===== 购物平台 =====
-      <section class="dash-section">
-        <div class="section-eyebrow">
-          <i class="fa-solid fa-bag-shopping"></i>
-          购物入口
-        </div>
-        <h2 class="section-title">爆款商品</h2>
-        <p class="section-desc">前往拼多多店铺选购墨水屏设备，购买后联系客服激活固件服务。</p>
 
-        <div class="product-grid">
-          <a>
-            v-for="product in products"
-            :key="product.id"
-            :href="product.url"
-            target="_blank"
-            class="product-entry"
-            >
-            <div class="product-entry-icon">
-              <i class="fa-solid fa-display"></i>
-            </div>
-            <div class="product-entry-info">
-              <div class="product-entry-name">{{ product.name }}</div>
-              <div class="product-entry-platform">
-                <i class="fa-solid fa-store"></i> 拼多多
-              </div>
-            </div>
-            <i class="fa-solid fa-arrow-up-right-from-square product-entry-arrow"></i>
-          </a>
-        </div> -->
-
+      <section class="dash-section">
         <!-- 联系卡片 -->
         <div class="contact-row">
           <div class="contact-card contact-card--qq">
-            <div class="contact-card-icon"><i class="fa-brands fa-qq"></i></div>
-            <div class="contact-card-info">
-              <div class="contact-card-label">QQ 交流群</div>
-              <div class="contact-card-desc">进群获取技术支持 & 资源分享</div>
-            </div>
+            <a class="contact-card-top"
+              href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=ITXocacD2fzUvPnFWuNBYzZgVBqHXe4P&authKey=AePvKvyHVWKz1H7IQVne2v6OWVojgirV8Z2HOFEYNwS%2F%2BGD1g88VqfzhNCEwS2Hs&noverify=0&group_code=280372025"
+              target="_blank">
+              <div class="contact-card-icon"><i class="fa-brands fa-qq"></i></div>
+              <div class="contact-card-text">
+                <div class="contact-card-label">QQ 交流群</div>
+                <div class="contact-card-desc">进群获取技术支持 &amp; 资源分享</div>
+              </div>
+              <i class="fa-solid fa-chevron-right contact-card-arrow"></i> <!-- 新增 -->
+            </a>
             <div class="contact-qr-wrap">
-              <img src="/images/qq.jpg" alt="QQ群" class="contact-qr" />
+              <img src="/images/qq.jpg" alt="QQ群二维码" class="contact-qr" />
             </div>
           </div>
           <div class="contact-card contact-card--wechat">
-            <div class="contact-card-icon"><i class="fa-brands fa-weixin"></i></div>
-            <div class="contact-card-info">
-              <div class="contact-card-label">微信联系</div>
-              <div class="contact-card-desc">售前咨询 & 激活服务</div>
-            </div>
+            <a class="contact-card-top">
+              <div class="contact-card-icon"><i class="fa-brands fa-weixin"></i></div>
+              <div class="contact-card-text">
+                <div class="contact-card-label">微信联系</div>
+                <div class="contact-card-desc">售前咨询 &amp; 激活服务</div>
+              </div>
+            </a>
             <div class="contact-qr-wrap">
-              <img src="/images/wechat.jpg" alt="微信" class="contact-qr" />
+              <img src="/images/wechat.jpg" alt="微信二维码" class="contact-qr" />
             </div>
           </div>
         </div>
       </section>
 
     </div>
-  </div>
 
-  <!-- 版本日志弹窗 -->
-  <VersionLogModal v-model="showVersionLog" :versions="updateInfo?.allVersions || []" :loading="loadingUpdate" />
+    <!-- 版本日志弹窗 -->
+    <VersionLogModal v-model="showVersionLog" :versions="updateInfo?.allVersions || []" :loading="loadingUpdate" />
+  </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import VersionLogModal from '../components/VersionLogModal.vue'
+import { getJson } from '../services/api.js'
 
 const showVersionLog = ref(false)
 const loadingUpdate = ref(false)
@@ -177,9 +156,9 @@ const latestChangelog = computed(() => {
 async function fetchUpdateInfo() {
   loadingUpdate.value = true
   try {
-    const res = await fetch('/api/check-update')
-    if (res.ok) {
-      updateInfo.value = await res.json()
+    const data = await getJson('/api/check-update')
+    if (data.httpStatus === 200) {
+      updateInfo.value = data
     }
   } catch (e) {
     console.warn('获取版本信息失败', e)
@@ -275,13 +254,16 @@ onMounted(() => {
   width: 52px;
   height: 52px;
   border-radius: 14px;
-  background: rgba(var(--theme-color-rgb), 0.1);
-  color: var(--theme-color);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24px;
+  overflow: hidden;
   flex-shrink: 0;
+  background: rgba(var(--theme-color-rgb), 0.06);
+}
+
+.app-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 .app-name {
@@ -591,33 +573,58 @@ onMounted(() => {
 .contact-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 16px;
 }
 
 .contact-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px 20px;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
   border: 1px solid var(--border-color);
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(var(--text-color-rgb), 0.02);
   transition: all 0.2s;
 }
 
 .contact-card:hover {
   border-color: rgba(var(--theme-color-rgb), 0.3);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
+}
+
+.contact-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  cursor: pointer;
+  justify-content: space-between;
+  /* 新增：把箭头顶到最右 */
+}
+
+.contact-card-arrow {
+  font-size: 13px;
+  color: var(--secondary-text-color);
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.2s, transform 0.2s;
+  margin-right: 8px;
+}
+
+.contact-card-top:hover .contact-card-arrow {
+  opacity: 1;
+  transform: translateX(2px);
+  /* 悬停时轻微右移，增强交互感 */
 }
 
 .contact-card-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   flex-shrink: 0;
 }
 
@@ -631,33 +638,45 @@ onMounted(() => {
   color: #07c160;
 }
 
-.contact-card-info {
+.contact-card-top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.contact-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   flex: 1;
 }
 
 .contact-card-label {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text-color);
-  margin-bottom: 4px;
 }
 
 .contact-card-desc {
   font-size: 12px;
   color: var(--secondary-text-color);
-  line-height: 1.4;
+  line-height: 1.5;
+  margin-top: -4px;
 }
 
 .contact-qr-wrap {
-  flex-shrink: 0;
+  width: 100%;
 }
 
 .contact-qr {
-  width: 52px;
-  height: 52px;
-  border-radius: 8px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
   object-fit: cover;
   border: 1px solid var(--border-color);
+  display: block;
 }
 
 /* ===== Responsive ===== */
@@ -674,22 +693,14 @@ onMounted(() => {
     grid-template-columns: 1fr;
   }
 
-  .contact-row {
-    grid-template-columns: 1fr;
-  }
-
   .other-platforms {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 480px) {
-  .contact-card {
-    flex-wrap: wrap;
-  }
-
-  .contact-qr-wrap {
-    display: none;
+  .contact-row {
+    grid-template-columns: 1fr;
   }
 }
 </style>

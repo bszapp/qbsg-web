@@ -76,3 +76,34 @@ export async function postJson(path, body = {}) {
 
   return data
 }
+
+export async function getJson(path) {
+  let response
+
+  try {
+    response = await fetch(buildApiUrl(path))
+  } catch (error) {
+    const networkError = new Error('网络异常，请稍后重试')
+    networkError.cause = error
+    throw networkError
+  }
+
+  let data = null
+
+  try {
+    data = await response.json()
+  } catch {
+    if (!response.ok) {
+      const requestError = new Error(`请求失败（${response.status}）`)
+      requestError.status = response.status
+      throw requestError
+    }
+  }
+
+  if (!data || typeof data !== 'object') {
+    data = {}
+  }
+
+  data.httpStatus = response.status
+  return data
+}

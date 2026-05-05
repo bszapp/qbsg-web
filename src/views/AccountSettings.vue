@@ -62,192 +62,192 @@
         </section>
       </div>
     </div>
+
+    <!-- ===== 修改密码弹窗 ===== -->
+    <Teleport to="body">
+      <Transition name="auth-popup-fade">
+        <div v-if="showChangePasswordModal" class="auth-popup-overlay" @click.self="closeChangePasswordModal">
+          <Transition name="auth-popup-slide" appear>
+            <div v-if="showChangePasswordModal" class="auth-popup-container">
+              <div class="auth-popup-header">
+                <h2 class="popup-title">修改密码</h2>
+                <button class="popup-close-btn" type="button" @click="closeChangePasswordModal">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="auth-popup-content">
+                <form class="auth-form" @submit.prevent="submitChangePassword">
+                  <div class="form-group">
+                    <label>当前密码 <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="10" rx="2" />
+                        <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                      </svg>
+                      <input v-model="changePasswordForm.password" :type="showCurrentPassword ? 'text' : 'password'"
+                        class="form-control" placeholder="输入当前密码" />
+                      <button type="button" class="password-toggle" @click="showCurrentPassword = !showCurrentPassword">
+                        <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                          <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
+                          <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>新密码 <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="10" rx="2" />
+                        <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                      </svg>
+                      <input v-model="changePasswordForm.newPassword" :type="showNewPassword ? 'text' : 'password'"
+                        class="form-control" placeholder="输入新密码" />
+                      <button type="button" class="password-toggle" @click="showNewPassword = !showNewPassword">
+                        <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                          <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
+                          <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <CaptchaWidget ref="changePasswordCaptchaRef" v-model="changePasswordCaptchaToken"
+                    @error="handleCaptchaError" />
+
+                  <button type="submit" class="btn btn-primary btn-block" :disabled="changingPassword">
+                    <span>{{ changingPassword ? '提交中...' : '确认修改密码' }}</span>
+                    <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="m13 6 6 6-6 6" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- ===== 注销账号弹窗 ===== -->
+    <Teleport to="body">
+      <Transition name="auth-popup-fade">
+        <div v-if="showDeleteModal" class="auth-popup-overlay" @click.self="closeDeleteModal">
+          <Transition name="auth-popup-slide" appear>
+            <div v-if="showDeleteModal" class="auth-popup-container">
+              <div class="auth-popup-header">
+                <h2 class="popup-title">注销账号</h2>
+                <button class="popup-close-btn" type="button" @click="closeDeleteModal">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="auth-popup-content">
+                <form class="auth-form" @submit.prevent="submitDeleteAccount">
+                  <div class="form-group">
+                    <label>用户名（确认）<span class="required">*</span></label>
+                    <div class="input-with-icon">
+                      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                      </svg>
+                      <input v-model="deleteForm.username" type="text" class="form-control" placeholder="输入当前用户名" />
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>密码 <span class="required">*</span></label>
+                    <div class="input-with-icon">
+                      <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="5" y="11" width="14" height="10" rx="2" />
+                        <path d="M8 11V8a4 4 0 1 1 8 0v3" />
+                      </svg>
+                      <input v-model="deleteForm.password" :type="showDeletePassword ? 'text' : 'password'"
+                        class="form-control" placeholder="输入当前密码" />
+                      <button type="button" class="password-toggle" @click="showDeletePassword = !showDeletePassword">
+                        <svg v-if="showDeletePassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                          stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M3 3l18 18" />
+                          <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
+                          <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
+                          <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
+                        </svg>
+                        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                          stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div class="form-group">
+                    <label>积分确认 <span class="required">*</span></label>
+                    <label class="points-confirm-row" :class="{ checked: deleteForm.confirmed }">
+                      <span class="checkbox-wrap">
+                        <input v-model="deleteForm.confirmed" type="checkbox" />
+                        <span class="checkmark" />
+                      </span>
+                      <span class="points-confirm-text">
+                        我确认放弃我的账户中
+                        <input v-model="deleteForm.points" type="text" class="points-inline-input" placeholder="积分数"
+                          @click.stop />
+                        积分
+                      </span>
+                    </label>
+                  </div>
+
+                  <CaptchaWidget ref="deleteCaptchaRef" v-model="deleteCaptchaToken" @error="handleCaptchaError" />
+
+                  <button type="submit" class="btn btn-danger btn-block"
+                    :disabled="deletingAccount || !deleteForm.confirmed">
+                    <span>{{ deletingAccount ? '注销中...' : '确认注销账号' }}</span>
+                    <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M5 12h14" />
+                      <path d="m13 6 6 6-6 6" />
+                    </svg>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
-
-  <!-- ===== 修改密码弹窗 ===== -->
-  <Teleport to="body">
-    <Transition name="auth-popup-fade">
-      <div v-if="showChangePasswordModal" class="auth-popup-overlay" @click.self="closeChangePasswordModal">
-        <Transition name="auth-popup-slide" appear>
-          <div v-if="showChangePasswordModal" class="auth-popup-container">
-            <div class="auth-popup-header">
-              <h2 class="popup-title">修改密码</h2>
-              <button class="popup-close-btn" type="button" @click="closeChangePasswordModal">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6l-12 12" />
-                  <path d="M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div class="auth-popup-content">
-              <form class="auth-form" @submit.prevent="submitChangePassword">
-                <div class="form-group">
-                  <label>当前密码 <span class="required">*</span></label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
-                    <input v-model="changePasswordForm.password" :type="showCurrentPassword ? 'text' : 'password'"
-                      class="form-control" placeholder="输入当前密码" />
-                    <button type="button" class="password-toggle" @click="showCurrentPassword = !showCurrentPassword">
-                      <svg v-if="showCurrentPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3l18 18" />
-                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-                        <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
-                        <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
-                      </svg>
-                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>新密码 <span class="required">*</span></label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
-                    <input v-model="changePasswordForm.newPassword" :type="showNewPassword ? 'text' : 'password'"
-                      class="form-control" placeholder="输入新密码" />
-                    <button type="button" class="password-toggle" @click="showNewPassword = !showNewPassword">
-                      <svg v-if="showNewPassword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3l18 18" />
-                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-                        <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
-                        <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
-                      </svg>
-                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <CaptchaWidget ref="changePasswordCaptchaRef" v-model="changePasswordCaptchaToken"
-                  @error="handleCaptchaError" />
-
-                <button type="submit" class="btn btn-primary btn-block" :disabled="changingPassword">
-                  <span>{{ changingPassword ? '提交中...' : '确认修改密码' }}</span>
-                  <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
-                </button>
-              </form>
-            </div>
-          </div>
-        </Transition>
-      </div>
-    </Transition>
-  </Teleport>
-
-  <!-- ===== 注销账号弹窗 ===== -->
-  <Teleport to="body">
-    <Transition name="auth-popup-fade">
-      <div v-if="showDeleteModal" class="auth-popup-overlay" @click.self="closeDeleteModal">
-        <Transition name="auth-popup-slide" appear>
-          <div v-if="showDeleteModal" class="auth-popup-container">
-            <div class="auth-popup-header">
-              <h2 class="popup-title">注销账号</h2>
-              <button class="popup-close-btn" type="button" @click="closeDeleteModal">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6l-12 12" />
-                  <path d="M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div class="auth-popup-content">
-              <form class="auth-form" @submit.prevent="submitDeleteAccount">
-                <div class="form-group">
-                  <label>用户名（确认）<span class="required">*</span></label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    <input v-model="deleteForm.username" type="text" class="form-control" placeholder="输入当前用户名" />
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>密码 <span class="required">*</span></label>
-                  <div class="input-with-icon">
-                    <svg class="input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                      stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="5" y="11" width="14" height="10" rx="2" />
-                      <path d="M8 11V8a4 4 0 1 1 8 0v3" />
-                    </svg>
-                    <input v-model="deleteForm.password" :type="showDeletePassword ? 'text' : 'password'"
-                      class="form-control" placeholder="输入当前密码" />
-                    <button type="button" class="password-toggle" @click="showDeletePassword = !showDeletePassword">
-                      <svg v-if="showDeletePassword" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 3l18 18" />
-                        <path d="M10.58 10.58a2 2 0 0 0 2.83 2.83" />
-                        <path d="M9.88 4.24A10.94 10.94 0 0 1 12 4c5 0 9.27 3.11 11 8-0.41 1.17-1.05 2.27-1.9 3.23" />
-                        <path d="M6.61 6.61C4.62 8 3.16 9.87 2 12c1.73 4.89 6 8 10 8 1.73 0 3.39-.49 4.82-1.33" />
-                      </svg>
-                      <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
-                        <circle cx="12" cy="12" r="3" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <div class="form-group">
-                  <label>积分确认 <span class="required">*</span></label>
-                  <label class="points-confirm-row" :class="{ checked: deleteForm.confirmed }">
-                    <span class="checkbox-wrap">
-                      <input v-model="deleteForm.confirmed" type="checkbox" />
-                      <span class="checkmark" />
-                    </span>
-                    <span class="points-confirm-text">
-                      我确认放弃我的账户中
-                      <input v-model="deleteForm.points" type="text" class="points-inline-input" placeholder="积分数"
-                        @click.stop />
-                      积分
-                    </span>
-                  </label>
-                </div>
-
-                <CaptchaWidget ref="deleteCaptchaRef" v-model="deleteCaptchaToken" @error="handleCaptchaError" />
-
-                <button type="submit" class="btn btn-danger btn-block"
-                  :disabled="deletingAccount || !deleteForm.confirmed">
-                  <span>{{ deletingAccount ? '注销中...' : '确认注销账号' }}</span>
-                  <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                    stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M5 12h14" />
-                    <path d="m13 6 6 6-6 6" />
-                  </svg>
-                </button>
-              </form>
-            </div>
-          </div>
-        </Transition>
-      </div>
-    </Transition>
-  </Teleport>
 </template>
 
 <script setup>

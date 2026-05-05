@@ -94,111 +94,113 @@
         </section>
       </div>
     </div>
+
+    <!-- ===== 支付弹窗 ===== -->
+    <Teleport to="body">
+      <Transition name="auth-popup-fade">
+        <div v-if="showPayModal" class="auth-popup-overlay" @click.self="closePayModal">
+          <Transition name="auth-popup-slide" appear>
+            <div v-if="showPayModal" class="auth-popup-container pay-modal-container">
+              <div class="auth-popup-header">
+                <h2 class="popup-title">完成支付</h2>
+                <button class="popup-close-btn" type="button" @click="closePayModal">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 6l-12 12" />
+                    <path d="M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div class="auth-popup-content">
+                <!-- 二维码区域（有 direct_url 时显示） -->
+                <div class="qr-section">
+                  <template v-if="orderResult?.directUrl">
+                    <div class="qr-wrap">
+                      <canvas ref="qrCanvas" class="qr-canvas"></canvas>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="qr-placeholder">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48"
+                        height="48">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                        <rect x="5" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                        <rect x="16" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                        <rect x="5" y="16" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
+                        <path d="M14 14h2v2h-2zM18 14h3v2h-3zM14 18h2v3h-2zM18 18h3v3h-3z" fill="currentColor"
+                          stroke="none" />
+                      </svg>
+                      <span>二维码不可用</span>
+                    </div>
+                  </template>
+                  <!-- 二维码下方始终显示 URL -->
+                  <a class="qr-url-link" :href="orderResult?.directUrl || orderResult?.payUrl" target="_blank"
+                    rel="noopener noreferrer">
+                    {{ orderResult?.directUrl || orderResult?.payUrl }}
+                  </a>
+
+                  <p class="qr-notice-text">二维码由支付宝官方前端提供，时效性短，如果失效请点击下方访问原始支付链接刷新二维码</p>
+
+                </div>
+
+                <!-- 订单信息 -->
+                <div class="pay-order-meta">
+                  <div class="pay-meta-row">
+                    <span class="pay-meta-label">商家订单号</span>
+                    <strong class="pay-meta-value">{{ orderResult?.orderNo }}</strong>
+                  </div>
+                  <div class="pay-meta-row">
+                    <span class="pay-meta-label">支付金额</span>
+                    <strong class="pay-meta-value">¥{{ orderResult?.amountYuan }}</strong>
+                  </div>
+                </div>
+
+                <!-- 操作按钮组 -->
+                <div class="pay-action-group">
+                  <div class="pay-btn-row">
+                    <button v-if="orderResult?.directScheme" type="button" class="pay-action-btn btn-alipay"
+                      @click="openDirectScheme">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"
+                        height="18">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+                        <path d="M8 12l2 2 4-4" />
+                      </svg>
+                      打开支付宝
+                    </button>
+
+                    <button type="button" class="pay-action-btn btn-origin" @click="openPayUrl">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18"
+                        height="18">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      原始 URL 跳转
+                    </button>
+                  </div>
+                </div>
+
+                <!-- 已完成支付 -->
+                <button type="button" class="btn btn-primary btn-block pay-confirm-btn" @click="handleClaimFromModal"
+                  :disabled="claimingOrder">
+                  <span>{{ claimingOrder ? '确认中...' : '我已完成支付' }}</span>
+                  <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14" />
+                    <path d="m13 6 6 6-6 6" />
+                  </svg>
+                </button>
+
+                <p class="pay-tip-text">支付成功后点击"我已完成支付"完成积分到账；若长时间未到账可在右侧输入订单号手动确认。</p>
+              </div>
+            </div>
+          </Transition>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
-
-  <!-- ===== 支付弹窗 ===== -->
-  <Teleport to="body">
-    <Transition name="auth-popup-fade">
-      <div v-if="showPayModal" class="auth-popup-overlay" @click.self="closePayModal">
-        <Transition name="auth-popup-slide" appear>
-          <div v-if="showPayModal" class="auth-popup-container pay-modal-container">
-            <div class="auth-popup-header">
-              <h2 class="popup-title">完成支付</h2>
-              <button class="popup-close-btn" type="button" @click="closePayModal">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 6l-12 12" />
-                  <path d="M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div class="auth-popup-content">
-              <!-- 二维码区域（有 direct_url 时显示） -->
-              <div class="qr-section">
-                <template v-if="orderResult?.directUrl">
-                  <div class="qr-wrap">
-                    <canvas ref="qrCanvas" class="qr-canvas"></canvas>
-                  </div>
-                </template>
-                <template v-else>
-                  <div class="qr-placeholder">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48"
-                      height="48">
-                      <rect x="3" y="3" width="7" height="7" rx="1" />
-                      <rect x="14" y="3" width="7" height="7" rx="1" />
-                      <rect x="3" y="14" width="7" height="7" rx="1" />
-                      <rect x="5" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
-                      <rect x="16" y="5" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
-                      <rect x="5" y="16" width="3" height="3" rx="0.5" fill="currentColor" stroke="none" />
-                      <path d="M14 14h2v2h-2zM18 14h3v2h-3zM14 18h2v3h-2zM18 18h3v3h-3z" fill="currentColor"
-                        stroke="none" />
-                    </svg>
-                    <span>二维码不可用</span>
-                  </div>
-                </template>
-                <!-- 二维码下方始终显示 URL -->
-                <a class="qr-url-link" :href="orderResult?.directUrl || orderResult?.payUrl" target="_blank"
-                  rel="noopener noreferrer">
-                  {{ orderResult?.directUrl || orderResult?.payUrl }}
-                </a>
-
-                <p class="qr-notice-text">二维码由支付宝官方前端提供，时效性短，如果失效请点击下方访问原始支付链接刷新二维码</p>
-
-              </div>
-
-              <!-- 订单信息 -->
-              <div class="pay-order-meta">
-                <div class="pay-meta-row">
-                  <span class="pay-meta-label">商家订单号</span>
-                  <strong class="pay-meta-value">{{ orderResult?.orderNo }}</strong>
-                </div>
-                <div class="pay-meta-row">
-                  <span class="pay-meta-label">支付金额</span>
-                  <strong class="pay-meta-value">¥{{ orderResult?.amountYuan }}</strong>
-                </div>
-              </div>
-
-              <!-- 操作按钮组 -->
-              <div class="pay-action-group">
-                <div class="pay-btn-row">
-                  <button v-if="orderResult?.directScheme" type="button" class="pay-action-btn btn-alipay"
-                    @click="openDirectScheme">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-                      <path d="M8 12l2 2 4-4" />
-                    </svg>
-                    打开支付宝
-                  </button>
-
-                  <button type="button" class="pay-action-btn btn-origin" @click="openPayUrl">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
-                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                    </svg>
-                    原始 URL 跳转
-                  </button>
-                </div>
-              </div>
-
-              <!-- 已完成支付 -->
-              <button type="button" class="btn btn-primary btn-block pay-confirm-btn" @click="handleClaimFromModal"
-                :disabled="claimingOrder">
-                <span>{{ claimingOrder ? '确认中...' : '我已完成支付' }}</span>
-                <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 12h14" />
-                  <path d="m13 6 6 6-6 6" />
-                </svg>
-              </button>
-
-              <p class="pay-tip-text">支付成功后点击"我已完成支付"完成积分到账；若长时间未到账可在右侧输入订单号手动确认。</p>
-            </div>
-          </div>
-        </Transition>
-      </div>
-    </Transition>
-  </Teleport>
 </template>
 
 <script setup>

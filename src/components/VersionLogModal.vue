@@ -7,7 +7,6 @@
                     <div v-if="modelValue" class="auth-popup-container version-modal">
                         <div class="auth-popup-header">
                             <div class="modal-header-left">
-                                <span class="modal-icon"><i class="fa-solid fa-code-branch"></i></span>
                                 <h2 class="popup-title">版本更新日志</h2>
                             </div>
                             <button class="popup-close-btn" type="button" @click="$emit('update:modelValue', false)">
@@ -39,7 +38,7 @@
                                             <span class="version-name">{{ ver.versionName }}</span>
                                             <span v-if="idx === 0" class="latest-badge">最新</span>
                                         </div>
-                                        <span class="version-code">Build {{ ver.versionCode }}</span>
+                                        <span class="version-code">#{{ ver.versionCode }}</span>
                                     </div>
                                     <div class="version-changelog">
                                         <div v-for="(line, i) in parseChangelog(ver.changelog)" :key="i"
@@ -233,7 +232,6 @@ function parseChangelog(text) {
     font-size: 16px;
     font-weight: 700;
     color: var(--text-color);
-    font-family: 'Orbitron', monospace;
 }
 
 .latest-badge {

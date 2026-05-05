@@ -2,7 +2,7 @@ import { computed, reactive, readonly } from 'vue'
 import { useToast } from './useToast.js'
 import { normalizeMessage, postJson, setAuthFailureHandler } from '../services/api.js'
 
-const TOKEN_STORAGE_KEY = 'xfltd_user_token'
+const TOKEN_STORAGE_KEY = 'user_token'
 
 const state = reactive({
   token: localStorage.getItem(TOKEN_STORAGE_KEY) || '',

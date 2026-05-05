@@ -10,7 +10,6 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 
-const SCRIPT_ID = 'xfltd-hcaptcha-script'
 const SCRIPT_SRC = 'https://js.hcaptcha.com/1/api.js?render=explicit'
 
 let scriptLoader = null
@@ -29,7 +28,7 @@ function loadHCaptcha() {
   }
 
   scriptLoader = new Promise((resolve, reject) => {
-    const existing = document.getElementById(SCRIPT_ID)
+    const existing = document.getElementById('hcaptcha')
     const script = existing || document.createElement('script')
     let settled = false
 
@@ -82,7 +81,7 @@ function loadHCaptcha() {
     script.addEventListener('error', handleError)
 
     if (!existing) {
-      script.id = SCRIPT_ID
+      script.id = 'hcaptcha'
       script.src = SCRIPT_SRC
       script.async = true
       script.defer = true
