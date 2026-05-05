@@ -927,7 +927,6 @@ body.preloader-active {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(10px);
   background: rgba(var(--card-background-rgb), 0.4);
   border-bottom: 1px solid rgba(var(--text-color-rgb), 0.07);
