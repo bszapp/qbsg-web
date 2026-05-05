@@ -93,6 +93,50 @@
           <span class="soft-badge">剩余积分：{{ activationResult.points }}</span>
         </div>
       </section>
+      <!-- 历史激活记录 -->
+      <section class="panel-card">
+        <div class="section-header">
+          <div>
+            <h2 class="section-title">历史激活记录</h2>
+            <p class="section-desc">共 {{ historyTotal }} 条，每页最多 100 条</p>
+          </div>
+          <button type="button" class="secondary-button" @click="loadHistory()" :disabled="historyLoading">
+            {{ historyLoading ? '加载中...' : '刷新' }}
+          </button>
+        </div>
+
+        <div v-if="historyLoading" class="callout-box">正在加载历史记录...</div>
+        <div v-else-if="!historyRecords.length" class="callout-box">暂无激活记录</div>
+        <template v-else>
+          <div class="history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>设备 MAC</th>
+                  <th>固件型号</th>
+                  <th>激活码</th>
+                  <th>激活时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(r, i) in historyRecords" :key="i">
+                  <td><code>{{ r.mac }}</code></td>
+                  <td><span class="fw-id-badge">{{ r.firmware_id }}</span></td>
+                  <td><code class="code-cell">{{ r.code }}</code></td>
+                  <td class="date-cell">{{ new Date(r.created_at).toLocaleString() }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div v-if="historyTotalPages > 1" class="pagination-row">
+            <button class="page-btn" @click="changePage(historyPage - 1)" :disabled="historyPage <= 1">上一页</button>
+            <span class="page-info">第 {{ historyPage }} / {{ historyTotalPages }} 页</span>
+            <button class="page-btn" @click="changePage(historyPage + 1)"
+              :disabled="historyPage >= historyTotalPages">下一页</button>
+          </div>
+        </template>
+      </section>
     </div>
   </div>
 </template>
@@ -116,18 +160,54 @@ const selectedProviderId = ref('')
 const selectedFirmwareId = ref('')
 const macValue = ref('')
 const activationResult = ref(null)
+const checkResult = ref(null)
+const checkLoading = ref(false)
+const historyRecords = ref([])
+const historyTotal = ref(0)
+const historyTotalPages = ref(1)
+const historyPage = ref(1)
+const historyLoading = ref(false)
 
 const currentProvider = computed(() => providers.value.find((provider) => provider.id === selectedProviderId.value) || null)
 const currentFirmwares = computed(() => currentProvider.value?.firmwares || [])
 const currentFirmware = computed(() => currentFirmwares.value.find((firmware) => firmware.id === selectedFirmwareId.value) || null)
 
 const activationPriceText = computed(() => {
-  if (!currentFirmware.value) {
-    return '请先选择固件类型'
+  if (!currentFirmware.value) return '请先选择固件类型'
+  if (!macValue.value.trim()) return `请输入设备 MAC 地址，本固件消耗 ${currentFirmware.value.points} 积分`
+  if (checkLoading.value) return '正在查询激活记录...'
+  if (checkResult.value) {
+    if (checkResult.value.exists) return '该设备已有激活记录，本次不消耗积分'
+    return `该设备无激活记录，本次将消耗 ${checkResult.value.points ?? currentFirmware.value.points} 积分`
   }
-
-  return `本次激活预计扣除 ${currentFirmware.value.points} 积分，重复激活同设备同型号通常不重复扣分。`
+  return `本次激活预计扣除 ${currentFirmware.value.points} 积分`
 })
+
+let checkTimer = null
+
+function triggerCheck() {
+  checkResult.value = null
+  clearTimeout(checkTimer)
+  if (!selectedProviderId.value || !selectedFirmwareId.value || !macValue.value.trim()) return
+  checkTimer = setTimeout(doCheck, 600)
+}
+
+async function doCheck() {
+  checkLoading.value = true
+  try {
+    const data = await postJson('/api/activation/check', {
+      token: authState.token,
+      provider_id: selectedProviderId.value,
+      firmware_id: selectedFirmwareId.value,
+      mac: macValue.value.trim(),
+    })
+    if (data.type === 'success') checkResult.value = data
+  } catch { }
+  finally { checkLoading.value = false }
+}
+
+watch(macValue, triggerCheck)
+watch([selectedProviderId, selectedFirmwareId], triggerCheck)
 
 watch(currentProvider, (provider) => {
   if (!provider) {
@@ -216,8 +296,31 @@ async function submitActivation() {
   }
 }
 
+async function loadHistory(page) {
+  historyLoading.value = true
+  try {
+    const data = await postJson('/api/activation/records', {
+      token: authState.token,
+      page: page ?? historyPage.value,
+    })
+    if (data.type === 'success') {
+      historyRecords.value = Array.isArray(data.records) ? data.records : []
+      historyTotal.value = data.total ?? 0
+      historyTotalPages.value = data.totalPages ?? 1
+      historyPage.value = data.page ?? 1
+    }
+  } catch { }
+  finally { historyLoading.value = false }
+}
+
+function changePage(p) {
+  if (p < 1 || p > historyTotalPages.value) return
+  loadHistory(p)
+}
+
 onMounted(() => {
   loadFirmwareList()
+  loadHistory(1)
 })
 </script>
 
@@ -234,6 +337,103 @@ onMounted(() => {
 
 .result-card {
   gap: 16px;
+}
+
+.history-table-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.history-table th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--secondary-text-color);
+  background: rgba(var(--text-color-rgb), 0.03);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.history-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(var(--text-color-rgb), 0.05);
+  color: var(--text-color);
+  vertical-align: middle;
+}
+
+.history-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.history-table tbody tr:hover td {
+  background: rgba(var(--theme-color-rgb), 0.03);
+}
+
+.history-table code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  background: rgba(var(--text-color-rgb), 0.05);
+  padding: 2px 6px;
+  border-radius: 5px;
+}
+
+.code-cell {
+  display: block;
+  white-space: nowrap;
+}
+
+.fw-id-badge {
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--secondary-text-color);
+}
+
+.date-cell {
+  white-space: nowrap;
+  color: var(--secondary-text-color);
+  font-size: 12px;
+}
+
+.pagination-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 14px 0 4px;
+}
+
+.page-btn {
+  padding: 6px 18px;
+  border-radius: 9px;
+  border: 1px solid var(--border-color);
+  background: rgba(var(--text-color-rgb), 0.03);
+  color: var(--text-color);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.page-btn:hover:not(:disabled) {
+  border-color: var(--theme-color);
+  color: var(--theme-color);
+}
+
+.page-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 13px;
+  color: var(--secondary-text-color);
 }
 
 .result-code-box {

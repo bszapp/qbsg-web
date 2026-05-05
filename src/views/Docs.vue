@@ -96,87 +96,23 @@
           线刷工具
         </div>
         <h2 class="section-title">固件刷写工具包</h2>
-        <p class="section-desc">首次使用或固件损坏时，使用以下工具对设备进行线刷烧录。建议下载完整工具包。</p>
+        <p class="section-desc">首次使用或固件损坏时，使用以下工具对设备进行线刷烧录。文件列表实时从服务器获取。</p>
 
-        <!-- 推荐：完整包 -->
-        <a href="/downloads/线刷工具完整包.zip" download class="zip-hero-btn">
-          <div class="zip-hero-icon">
-            <i class="fa-solid fa-file-zipper"></i>
-          </div>
-          <div class="zip-hero-info">
-            <div class="zip-hero-name">
-              线刷工具完整包
-              <span class="recommend-badge">推荐</span>
+        <div v-if="downloadLoading" class="dl-status-box">正在加载文件列表...</div>
+        <div v-else-if="downloadError" class="dl-status-box dl-error">{{ downloadError }}</div>
+        <div v-else-if="!downloadFiles.length" class="dl-status-box">downloads 目录暂无文件</div>
+        <div v-else class="single-file-list">
+          <a v-for="f in downloadFiles" :key="f.name" :href="'/downloads/' + f.name" download class="single-file-row">
+            <div :class="['sfr-icon-wrap', iconClass(f.name)]">
+              <i :class="['fa-solid', iconTag(f.name)]"></i>
             </div>
-            <div class="zip-hero-desc">含全部工具、驱动及说明文档，一次下载即可</div>
-          </div>
-          <div class="zip-hero-dl">
-            <i class="fa-solid fa-download"></i>
-            <span>一键下载</span>
-          </div>
-        </a>
-
-        <!-- 单独下载列表 -->
-        <div class="single-file-section">
-          <div class="single-file-title">也可单独下载所需资源</div>
-          <div class="single-file-list">
-
-            <a href="/downloads/SmartSnippets_Toolbox_v5.0.10.2434_windows.msi" download class="single-file-row">
-              <div class="sfr-icon-wrap sfr-icon-wrap--exe">
-                <i class="fa-brands fa-windows"></i>
-              </div>
-              <div class="sfr-info">
-                <span class="sfr-name">SmartSnippets Toolbox v5.0.10</span>
-                <span class="sfr-meta">MSI · Windows 安装包 · 主烧录软件</span>
-              </div>
-              <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
-            </a>
-
-            <a href="/downloads/JLink_Windows_V788j_x86_64.exe" download class="single-file-row">
-              <div class="sfr-icon-wrap sfr-icon-wrap--exe">
-                <i class="fa-solid fa-microchip"></i>
-              </div>
-              <div class="sfr-info">
-                <span class="sfr-name">JLink V788j</span>
-                <span class="sfr-meta">EXE · 调试驱动 · 配合 SmartSnippets 使用</span>
-              </div>
-              <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
-            </a>
-
-            <a href="/docs/固件说明.docx" download class="single-file-row">
-              <div class="sfr-icon-wrap sfr-icon-wrap--doc">
-                <i class="fa-solid fa-file-word"></i>
-              </div>
-              <div class="sfr-info">
-                <span class="sfr-name">固件说明</span>
-                <span class="sfr-meta">DOCX · 固件基础说明文档</span>
-              </div>
-              <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
-            </a>
-
-            <a href="/docs/线刷烧录说明.docx" download class="single-file-row">
-              <div class="sfr-icon-wrap sfr-icon-wrap--doc">
-                <i class="fa-solid fa-file-word"></i>
-              </div>
-              <div class="sfr-info">
-                <span class="sfr-name">线刷烧录说明</span>
-                <span class="sfr-meta">DOCX · 烧录步骤详解（通用版）</span>
-              </div>
-              <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
-            </a>
-
-            <a href="/docs/线刷烧录说明2.docx" download class="single-file-row">
-              <div class="sfr-icon-wrap sfr-icon-wrap--doc">
-                <i class="fa-solid fa-file-word"></i>
-              </div>
-              <div class="sfr-info">
-                <span class="sfr-name">线刷烧录说明 2</span>
-                <span class="sfr-meta">DOCX · 烧录步骤详解（补充版）</span>
-              </div>
-              <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
-            </a>
-
-          </div>
+            <div class="sfr-info">
+              <span class="sfr-name">{{ f.name }}</span>
+              <span class="sfr-meta">{{ extOf(f.name) }} · {{ formatSize(f.size) }} · {{ formatDate(f.modified)
+              }}</span>
+            </div>
+            <span class="sfr-dl-btn"><i class="fa-solid fa-download"></i></span>
+          </a>
         </div>
       </section>
 
@@ -211,9 +147,59 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { getJson } from '../services/api.js'
 
 const openFaq = ref(null)
+const downloadFiles = ref([])
+const downloadLoading = ref(true)
+const downloadError = ref('')
+
+function formatSize(bytes) {
+  if (bytes < 1024) return bytes + ' B'
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+  return (bytes / 1024 / 1024).toFixed(1) + ' MB'
+}
+
+function formatDate(iso) {
+  return new Date(iso).toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })
+}
+
+function extOf(name) {
+  const idx = name.lastIndexOf('.')
+  return idx === -1 ? 'FILE' : name.slice(idx + 1).toUpperCase()
+}
+
+function iconClass(name) {
+  const ext = name.split('.').pop().toLowerCase()
+  if (['zip', 'rar', '7z'].includes(ext)) return 'sfr-icon-wrap--zip'
+  if (['exe', 'msi'].includes(ext)) return 'sfr-icon-wrap--exe'
+  if (['doc', 'docx'].includes(ext)) return 'sfr-icon-wrap--doc'
+  return 'sfr-icon-wrap--file'
+}
+
+function iconTag(name) {
+  const ext = name.split('.').pop().toLowerCase()
+  if (['zip', 'rar', '7z'].includes(ext)) return 'fa-file-zipper'
+  if (['exe', 'msi'].includes(ext)) return 'fa-microchip'
+  if (['doc', 'docx'].includes(ext)) return 'fa-file-word'
+  return 'fa-file'
+}
+
+onMounted(async () => {
+  try {
+    const data = await getJson('/api/getdir/downloads')
+    if (data.type === 'success' && Array.isArray(data.files)) {
+      downloadFiles.value = data.files
+    } else {
+      downloadError.value = '文件列表加载失败'
+    }
+  } catch (e) {
+    downloadError.value = e.message || '文件列表加载失败'
+  } finally {
+    downloadLoading.value = false
+  }
+})
 const faqs = [
   {
     q: '为什么我的手机打不开网页？',
@@ -610,6 +596,31 @@ const faqs = [
 .sfr-icon-wrap--doc {
   background: rgba(59, 130, 246, 0.1);
   color: #3b82f6;
+}
+
+.sfr-icon-wrap--zip {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+.sfr-icon-wrap--file {
+  background: rgba(var(--text-color-rgb), 0.07);
+  color: var(--secondary-text-color);
+}
+
+.dl-status-box {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--secondary-text-color);
+  background: rgba(var(--text-color-rgb), 0.03);
+  border: 1px solid var(--border-color);
+}
+
+.dl-error {
+  color: var(--error-color);
+  background: rgba(var(--error-color-rgb), 0.06);
+  border-color: rgba(var(--error-color-rgb), 0.15);
 }
 
 .sfr-info {
