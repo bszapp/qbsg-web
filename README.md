@@ -31,5 +31,5 @@ npm run dev
 
 在 `src/config/app.js` 中修改：
 
-- `APP_BASE_PATH` — 部署子目录（默认 `/new/`）
+- `APP_BASE_PATH` — 部署子目录
 - `API_BASE_URL` — 本地开发时的后端代理地址

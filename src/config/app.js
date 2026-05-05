@@ -1,5 +1,5 @@
 // 站点部署目录。放根目录就填 '/'，放 /new/ 就填 '/new/'。
-export const APP_BASE_PATH = '/new/'
+export const APP_BASE_PATH = '/'
 
 
 export function buildApiUrl(path = '') {
