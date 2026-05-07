@@ -33,6 +33,7 @@ const Gujian = () => import('../views/Gujian.vue')
 const Orders = () => import('../views/Orders.vue')
 const Account = () => import('../views/Account.vue')
 const AccountSettings = () => import('../views/AccountSettings.vue')
+const ProviderAdmin = () => import('../views/ProviderAdmin.vue')
 
 export const navItems = [
   { path: '/', name: 'home', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
@@ -56,6 +57,15 @@ const routes = [
     path: '/me/settings',
     name: 'me-settings',
     component: AccountSettings,
+    meta: {
+      requiresAuth: true,
+      navPath: '/me',
+    },
+  },
+  {
+    path: '/me/provider',
+    name: 'me-provider',
+    component: ProviderAdmin,
     meta: {
       requiresAuth: true,
       navPath: '/me',

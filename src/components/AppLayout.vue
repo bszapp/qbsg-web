@@ -105,6 +105,15 @@
             </svg>
             <span>个人设置</span>
           </div>
+          <div v-if="state.user?.provider" class="menu-item" @click="goToProvider">
+            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2" />
+              <path d="M8 21h8" />
+              <path d="M12 17v4" />
+            </svg>
+            <span>管理后台</span>
+          </div>
           <div class="divider" />
           <div class="menu-item" @click="handleLogout">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -429,6 +438,11 @@ function goToMyPage() {
 function goToSettings() {
   closeDropdown()
   router.push('/me/settings')
+}
+
+function goToProvider() {
+  closeDropdown()
+  router.push('/me/provider')
 }
 
 async function handleLogout() {
