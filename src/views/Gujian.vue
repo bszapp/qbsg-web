@@ -23,7 +23,7 @@
           <div class="fw-grid">
             <div v-for="fw in group.firmwares" :key="fw.firmware_id" class="fw-card">
               <div class="fw-thumb">
-                <img v-if="fw.image_url" :src="fw.image_url" :alt="fw.name" />
+                <img v-if="fw.image_url" :src="resolveFileUrl(fw.image_url)" :alt="fw.name" />
                 <div v-else class="fw-thumb-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
                     stroke-linejoin="round">
@@ -42,8 +42,8 @@
               </div>
 
               <div class="fw-foot">
-                <a v-if="fw.download_url" :href="fw.download_url" target="_blank" rel="noopener noreferrer"
-                  class="dl-btn">下载固件</a>
+                <a v-if="fw.download_url" :href="resolveFileUrl(fw.download_url)" target="_blank"
+                  rel="noopener noreferrer" class="dl-btn">下载固件</a>
                 <span v-else class="no-dl">未提供下载</span>
               </div>
             </div>
@@ -67,6 +67,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { postJson } from '../services/api.js'
+import { buildApiUrl } from '../config/app.js'
 import { useToast } from '../composables/useToast.js'
 import { useGujianFilter } from '../composables/useGujianFilter.js'
 
@@ -74,6 +75,12 @@ const { showToast } = useToast()
 const router = useRouter()
 
 const { groups, filteredGroups, sizeClass } = useGujianFilter()
+
+function resolveFileUrl(url) {
+  if (!url) return url
+  if (url.startsWith('/providers/')) return buildApiUrl(url)
+  return url
+}
 
 const loading = ref(false)
 const loadError = ref('')
