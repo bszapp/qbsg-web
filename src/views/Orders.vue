@@ -42,7 +42,7 @@
               <select v-model="selectedProviderId" class="select-input">
                 <option value="" disabled>-- 请选择 --</option>
                 <option v-for="provider in providers" :key="provider.id" :value="provider.id">
-                  {{ provider.id }}
+                  {{ provider.name }}
                 </option>
               </select>
             </div>
@@ -238,7 +238,10 @@ async function loadFirmwareList() {
     // 如果是从固件页跳过来的，自动填入参数
     const providerParam = route.query.provider
     const activationIdParam = route.query.activation_id
-    if (providerParam) selectedProviderId.value = String(providerParam)
+    if (providerParam) {
+      const foundProvider = providers.value.find((p) => p.name === String(providerParam))
+      if (foundProvider) selectedProviderId.value = foundProvider.id
+    }
     if (activationIdParam) selectedFirmwareId.value = String(activationIdParam)
   } catch (error) {
     loadError.value = error.message || '固件列表加载失败，请稍后重试'

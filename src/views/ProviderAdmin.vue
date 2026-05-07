@@ -67,11 +67,11 @@
                                         <div class="fw-field"><span class="fw-key">firmware_id</span><span
                                                 class="fw-val mono">{{ fw.firmware_id }}</span></div>
                                         <div class="fw-field"><span class="fw-key">名称</span><span class="fw-val">{{
-                                                fw.name || '—' }}</span></div>
+                                            fw.name || '—' }}</span></div>
                                         <div class="fw-field"><span class="fw-key">尺寸</span><span class="fw-val">{{
-                                                fw.screen_size || '—' }}</span></div>
+                                            fw.screen_size || '—' }}</span></div>
                                         <div class="fw-field"><span class="fw-key">描述</span><span class="fw-val">{{
-                                                fw.description || '—' }}</span></div>
+                                            fw.description || '—' }}</span></div>
                                         <div class="fw-field"><span class="fw-key">图片URL</span><span
                                                 class="fw-val mono url-val">{{ fw.image_url || '—' }}</span></div>
                                         <div class="fw-field"><span class="fw-key">下载URL</span><span
@@ -91,7 +91,7 @@
                         <div>
                             <h2 class="section-title">激活码生成脚本</h2>
                             <p class="section-desc">
-                                Node.js ESM 脚本，运行于沙箱，仅允许通过白名单规则联网，无法访问本地地址和文件系统。<br>
+                                Node.js ESM 脚本，运行于沙箱，无法访问本地地址和文件系统。<br>
                                 激活码直接 <code class="inline-code">console.log(code)</code> 输出即可。
                                 可用变量：<code class="inline-code">FIRMWARE_ID</code>、<code
                                     class="inline-code">MAC</code>（由沙箱注入）。
@@ -111,33 +111,6 @@
                         <button class="primary-button" @click="saveScript" :disabled="savingScript">
                             {{ savingScript ? '保存中…' : '保存脚本' }}
                         </button>
-                    </div>
-                </section>
-            </div>
-
-            <!-- ── 网络白名单 ── -->
-            <div v-if="activeTab === 'allowlist'">
-                <section class="panel-card">
-                    <div class="section-header">
-                        <div>
-                            <h2 class="section-title">网络访问白名单</h2>
-                            <p class="section-desc">脚本中的 fetch 只能访问 URL 与以下正则匹配的地址，每行一条正则表达式。</p>
-                        </div>
-                    </div>
-                    <div v-if="loadingAllowlist" class="state-text">加载中…</div>
-                    <div v-else>
-                        <div v-if="!allowlistPatterns.length" class="state-text">暂无规则，点击下方添加</div>
-                        <div v-for="(p, idx) in allowlistPatterns" :key="idx" class="pattern-row">
-                            <input v-model="allowlistPatterns[idx]" class="text-input"
-                                placeholder="正则，如: ^https://api\.example\.com" />
-                            <button class="icon-btn danger" @click="removePattern(idx)" title="删除">🗑️</button>
-                        </div>
-                        <button class="secondary-button" @click="addPattern">+ 添加规则</button>
-                        <div class="button-row" style="margin-top: 16px;">
-                            <button class="primary-button" @click="saveAllowlist" :disabled="savingAllowlist">
-                                {{ savingAllowlist ? '保存中…' : '保存白名单' }}
-                            </button>
-                        </div>
                     </div>
                 </section>
             </div>
@@ -201,13 +174,31 @@
                                         </div>
                                         <div class="fw-input-wrap">
                                             <label class="fw-input-label">图片 URL</label>
-                                            <input v-model="fw.image_url" class="text-input"
-                                                placeholder="https://..." />
+                                            <div class="upload-row">
+                                                <input v-model="fw.image_url" class="text-input"
+                                                    placeholder="https://... 或点击上传" />
+                                                <button type="button" class="upload-btn" @click="triggerUploadImage(fw)"
+                                                    :disabled="uploading" title="上传图片">📁 上传图片</button>
+                                                <button v-if="fw.image_url && fw.image_url.startsWith('/providers/')"
+                                                    type="button" class="clear-file-btn"
+                                                    @click="clearProviderFile(fw, 'image_url')"
+                                                    title="从服务器删除此图片">✕</button>
+                                            </div>
                                         </div>
                                         <div class="fw-input-wrap">
-                                            <label class="fw-input-label">下载 URL</label>
-                                            <input v-model="fw.download_url" class="text-input"
-                                                placeholder="https://..." />
+                                            <label class="fw-input-label">下载 URL（固件）</label>
+                                            <div class="upload-row">
+                                                <input v-model="fw.download_url" class="text-input"
+                                                    placeholder="https://... 或点击上传" />
+                                                <button type="button" class="upload-btn"
+                                                    @click="triggerUploadFirmware(fw)" :disabled="uploading"
+                                                    title="上传固件文件">📁 上传固件</button>
+                                                <button
+                                                    v-if="fw.download_url && fw.download_url.startsWith('/providers/')"
+                                                    type="button" class="clear-file-btn"
+                                                    @click="clearProviderFile(fw, 'download_url')"
+                                                    title="从服务器删除此固件">✕</button>
+                                            </div>
                                         </div>
                                     </div>
                                     <button class="icon-btn danger" @click="removeFirmwareRow(idx)"
@@ -247,7 +238,6 @@ const token = computed(() => authState.token)
 const tabs = [
     { key: 'catalog', label: '固件目录' },
     { key: 'script', label: '激活脚本' },
-    { key: 'allowlist', label: '网络白名单' },
 ]
 const activeTab = ref('catalog')
 
@@ -255,7 +245,6 @@ function switchTab(key) {
     activeTab.value = key
     if (key === 'catalog') loadCatalog()
     if (key === 'script' && scriptContent.value === null) loadScript()
-    if (key === 'allowlist' && !allowlistLoaded.value) loadAllowlist()
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
@@ -386,7 +375,7 @@ async function saveGroup() {
 }
 
 async function confirmDeleteGroup(g) {
-    if (!confirm(`确认删除分组「${g.label}」？\n\n此操作不可恢复，删除后该分组的固件和激活编号将全部移除。`)) return
+    if (!confirm(`确认删除分组「${g.label}」？\n\n此操作不可恢复，删除后该分组的固件、激活编号及相关服务器文件将全部移除。`)) return
     try {
         const data = await apiDelete(`/api/provider/catalog/${g.id}`, {})
         if (data.type === 'success') {
@@ -432,47 +421,84 @@ async function saveScript() {
     }
 }
 
-// ── 网络白名单 ────────────────────────────────────────────────────────────────
-const allowlistPatterns = ref([])
-const loadingAllowlist = ref(false)
-const savingAllowlist = ref(false)
-const allowlistLoaded = ref(false)
+// ── 文件上传 ──────────────────────────────────────────────────────────────────
+const uploading = ref(false)
 
-async function loadAllowlist() {
-    loadingAllowlist.value = true
-    try {
-        const data = await apiGet('/api/provider/allowlist')
-        if (data.type === 'success') {
-            allowlistPatterns.value = [...(data.patterns || [])]
-            allowlistLoaded.value = true
-        } else {
-            showToast(data.message || '白名单加载失败', 'error', 3000)
-        }
-    } catch (e) {
-        showToast(e.message || '网络错误', 'error', 3000)
-    } finally {
-        loadingAllowlist.value = false
-    }
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = (e) => resolve(e.target.result.split(',')[1])
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+    })
 }
 
-function addPattern() { allowlistPatterns.value.push('') }
-function removePattern(idx) { allowlistPatterns.value.splice(idx, 1) }
-
-async function saveAllowlist() {
-    const patterns = allowlistPatterns.value.map(p => p.trim()).filter(Boolean)
-    savingAllowlist.value = true
-    try {
-        const data = await apiPut('/api/provider/allowlist', { patterns })
-        if (data.type === 'success') {
-            showToast('白名单已保存', 'success', 2500)
-            allowlistPatterns.value = patterns
-        } else {
-            showToast(data.message || '保存失败', 'error', 3000)
+function triggerUploadImage(fw) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/jpeg,image/png,image/gif,image/webp,image/bmp'
+    input.onchange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        uploading.value = true
+        try {
+            const base64 = await fileToBase64(file)
+            const ext = file.name.split('.').pop() || 'jpg'
+            const data = await apiPost('/api/provider/upload-image', { file_base64: base64, file_ext: ext })
+            if (data.type === 'success') {
+                fw.image_url = data.url
+                showToast('图片上传成功', 'success', 2500)
+            } else {
+                showToast(data.message || '上传失败', 'error', 3000)
+            }
+        } catch (err) {
+            showToast(err.message || '上传出错', 'error', 3000)
+        } finally {
+            uploading.value = false
         }
-    } catch (e) {
-        showToast(e.message || '网络错误', 'error', 3000)
-    } finally {
-        savingAllowlist.value = false
+    }
+    input.click()
+}
+
+function triggerUploadFirmware(fw) {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.onchange = async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+        uploading.value = true
+        try {
+            const base64 = await fileToBase64(file)
+            const data = await apiPost('/api/provider/upload-firmware', { file_base64: base64, filename: file.name })
+            if (data.type === 'success') {
+                fw.download_url = data.url
+                showToast('固件上传成功', 'success', 2500)
+            } else {
+                showToast(data.message || '上传失败', 'error', 3000)
+            }
+        } catch (err) {
+            showToast(err.message || '上传出错', 'error', 3000)
+        } finally {
+            uploading.value = false
+        }
+    }
+    input.click()
+}
+
+async function clearProviderFile(fw, field) {
+    const url = fw[field]
+    if (!url) return
+    if (!confirm(`确认从服务器删除此文件？\n${url}\n\n注意：此操作不可恢复`)) return
+    try {
+        const data = await apiDelete('/api/provider/file', { url })
+        if (data.type === 'success') {
+            fw[field] = ''
+            showToast('文件已从服务器删除', 'success', 2500)
+        } else {
+            showToast(data.message || '删除失败', 'error', 3000)
+        }
+    } catch (err) {
+        showToast(err.message || '删除出错', 'error', 3000)
     }
 }
 
@@ -754,18 +780,6 @@ onMounted(() => {
     border-radius: 4px;
 }
 
-/* ── 白名单 ── */
-.pattern-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin-bottom: 8px;
-}
-
-.pattern-row .text-input {
-    flex: 1;
-}
-
 .secondary-button {
     padding: 8px 18px;
     border-radius: 999px;
@@ -906,6 +920,61 @@ onMounted(() => {
     font-weight: 600;
 }
 
+/* ── 文件上传 ── */
+.upload-row {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.upload-row .text-input {
+    flex: 1;
+    min-width: 0;
+}
+
+.upload-btn {
+    padding: 6px 9px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--theme-color-rgb), 0.3);
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.upload-btn:hover:not(:disabled) {
+    background: rgba(var(--theme-color-rgb), 0.18);
+}
+
+.upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.clear-file-btn {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    font-size: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.clear-file-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+}
+
 /* ── 动画 ── */
 .modal-fade-enter-active {
     transition: opacity 0.25s ease;
@@ -942,6 +1011,10 @@ onMounted(() => {
     .modal-header,
     .modal-footer {
         padding: 14px 16px;
+    }
+
+    .upload-row {
+        flex-wrap: wrap;
     }
 }
 </style>
