@@ -1,19 +1,39 @@
 <template>
     <div class="page-shell">
-        <!-- 无权限 -->
-        <div v-if="!hasProvider" class="no-permission-card">
+
+        <!-- 初始加载 -->
+        <div v-if="pageLoading" class="state-text">加载中…</div>
+
+        <!-- 无提供商权限 -->
+        <div v-else-if="myProviders.length === 0" class="no-permission-card">
             <div class="no-perm-icon">🔒</div>
-            <h2>权限不足</h2>
+            <h2>您不是管理员</h2>
             <p>当前账号未绑定任何提供商权限，无法访问此页面。</p>
             <button class="primary-button" @click="$router.push('/')">返回主页</button>
         </div>
 
-        <!-- 有权限 -->
-        <div v-else class="page-stack">
+        <!-- 多提供商选择界面 -->
+        <div v-else-if="myProviders.length > 1 && !selectedUuid" class="page-stack">
+            <section class="hero-card">
+                <span class="page-eyebrow">管理后台</span>
+                <h1 class="page-title">请选择要管理的提供商</h1>
+            </section>
+            <div class="provider-selector">
+                <button v-for="p in myProviders" :key="p.uuid" class="provider-btn" @click="selectProvider(p.uuid)">
+                    <span class="provider-btn-name">{{ p.name }}</span>
+                    <span class="provider-btn-arrow">→</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 主界面 -->
+        <div v-else-if="selectedUuid" class="page-stack">
             <section class="hero-card">
                 <span class="page-eyebrow">管理后台</span>
                 <div class="page-title-row">
-                    <h1 class="page-title">提供商：{{ providerName }}</h1>
+                    <h1 class="page-title">{{ selectedProviderName }}</h1>
+                    <button v-if="myProviders.length > 1" class="secondary-button small-btn"
+                        @click="selectedUuid = null">切换提供商</button>
                 </div>
             </section>
 
@@ -26,62 +46,67 @@
 
             <!-- ── 固件目录 ── -->
             <div v-if="activeTab === 'catalog'">
-                <section class="panel-card">
-                    <div class="section-header">
-                        <div>
-                            <h2 class="section-title">固件目录分组</h2>
-                            <p class="section-desc">每个分组对应一个激活编号，可包含多个固件条目。</p>
+                <div class="catalog-topbar">
+                    <div>
+                        <h2 class="section-title">固件目录</h2>
+                        <p class="section-desc">点击分组头的按钮管理分组和固件条目。</p>
+                    </div>
+                    <button class="primary-button small-btn" @click="openAddGroupModal">＋ 创建新分组</button>
+                </div>
+
+                <div v-if="loadingCatalog" class="state-text">加载中…</div>
+                <div v-else-if="groups.length === 0" class="state-text">暂无分组，点击右上角「创建新分组」</div>
+
+                <div v-for="(group, gi) in groups" :key="group.id ?? ('new-' + gi)" class="group-block">
+                    <!-- 分组头 -->
+                    <div class="group-header">
+                        <div class="group-meta">
+                            <strong class="group-label">{{ group.label }}</strong>
+                            <div class="group-tags">
+                                <span class="tag tag-id">激活编号: {{ group.activation_id || '（无）' }}</span>
+                                <span class="tag tag-pts">{{ group.points }} 积分</span>
+                                <span class="tag tag-sort">排序: {{ group.sort_order }}</span>
+                            </div>
                         </div>
-                        <button class="primary-button small-btn" @click="openAddGroup">+ 新增分组</button>
+                        <div class="group-actions">
+                            <button class="action-btn" @click="openAddFirmwareModal(gi)">＋ 新增固件</button>
+                            <button class="icon-btn" @click="openGroupSettingsModal(gi)" title="分组设置">⚙️</button>
+                            <button class="icon-btn danger" @click="deleteGroup(gi)" title="删除分组">🗑️</button>
+                        </div>
                     </div>
 
-                    <div v-if="loadingCatalog" class="state-text">加载中…</div>
-                    <div v-else-if="!groups.length" class="state-text">暂无分组，点击右上角新增</div>
-
-                    <div v-else class="groups-list">
-                        <div v-for="g in groups" :key="g.id" class="group-card">
-                            <div class="group-header">
-                                <div class="group-meta">
-                                    <strong class="group-label">{{ g.label }}</strong>
-                                    <span class="group-tags">
-                                        <span class="tag tag-id">激活编号: {{ g.activation_id || '（无）' }}</span>
-                                        <span class="tag tag-pts">{{ g.points }} 积分</span>
-                                        <span class="tag tag-sort">排序: {{ g.sort_order }}</span>
+                    <!-- 固件列表 -->
+                    <div class="firmware-list">
+                        <div v-if="group.firmwares.length === 0" class="state-text small">
+                            此分组暂无固件，点击分组头的「＋ 新增固件」添加
+                        </div>
+                        <div v-for="(fw, fi) in group.firmwares" :key="fw.firmware_id + '-' + fi" class="fw-item">
+                            <div class="fw-thumb">
+                                <img v-if="fw.image_display_url" :src="resolveDisplayUrl(fw.image_display_url)"
+                                    class="fw-img" />
+                                <div v-else class="fw-img-placeholder">📦</div>
+                            </div>
+                            <div class="fw-info">
+                                <div class="fw-id mono">{{ fw.firmware_id }}</div>
+                                <div class="fw-name">{{ fw.name || '（未命名）' }}</div>
+                                <div v-if="fw.description" class="fw-desc">{{ fw.description }}</div>
+                                <div class="fw-tags">
+                                    <span v-if="fw.screen_size" class="tag tag-sort">{{ fw.screen_size }}</span>
+                                    <span class="tag" :class="fw.image_filename ? 'tag-pts' : 'tag-empty'">
+                                        封面 {{ fw.image_filename ? '✓' : '未上传' }}
+                                    </span>
+                                    <span class="tag" :class="fw.download_filename ? 'tag-pts' : 'tag-empty'">
+                                        固件 {{ fw.download_filename ? '✓' : '未上传' }}
                                     </span>
                                 </div>
-                                <div class="group-actions">
-                                    <button class="icon-btn" @click="openEditGroup(g)" title="编辑">✏️</button>
-                                    <button class="icon-btn danger" @click="confirmDeleteGroup(g)"
-                                        title="删除">🗑️</button>
-                                </div>
                             </div>
-
-                            <div class="firmwares-section">
-                                <div class="firmwares-toggle" @click="toggleFirmwares(g.id)">
-                                    <span>固件列表（{{ g.firmwares?.length || 0 }}）</span>
-                                    <span>{{ expandedGroups.has(g.id) ? '▲' : '▼' }}</span>
-                                </div>
-                                <div v-if="expandedGroups.has(g.id)" class="firmwares-list">
-                                    <div v-if="!g.firmwares?.length" class="state-text small">此分组暂无固件条目</div>
-                                    <div v-for="(fw, idx) in g.firmwares" :key="idx" class="firmware-row">
-                                        <div class="fw-field"><span class="fw-key">firmware_id</span><span
-                                                class="fw-val mono">{{ fw.firmware_id }}</span></div>
-                                        <div class="fw-field"><span class="fw-key">名称</span><span class="fw-val">{{
-                                            fw.name || '—' }}</span></div>
-                                        <div class="fw-field"><span class="fw-key">尺寸</span><span class="fw-val">{{
-                                            fw.screen_size || '—' }}</span></div>
-                                        <div class="fw-field"><span class="fw-key">描述</span><span class="fw-val">{{
-                                            fw.description || '—' }}</span></div>
-                                        <div class="fw-field"><span class="fw-key">图片URL</span><span
-                                                class="fw-val mono url-val">{{ fw.image_url || '—' }}</span></div>
-                                        <div class="fw-field"><span class="fw-key">下载URL</span><span
-                                                class="fw-val mono url-val">{{ fw.download_url || '—' }}</span></div>
-                                    </div>
-                                </div>
+                            <div class="fw-actions">
+                                <button class="icon-btn" @click="openEditFirmwareModal(gi, fi)" title="编辑">✏️</button>
+                                <button class="icon-btn danger" @click="deleteFirmware(gi, fi)" title="删除">🗑️</button>
                             </div>
                         </div>
                     </div>
-                </section>
+                </div>
             </div>
 
             <!-- ── 激活脚本 ── -->
@@ -91,22 +116,14 @@
                         <div>
                             <h2 class="section-title">激活码生成脚本</h2>
                             <p class="section-desc">
-                                Node.js ESM 脚本，运行于沙箱，无法访问本地地址和文件系统。<br>
-                                激活码直接 <code class="inline-code">console.log(code)</code> 输出即可。
-                                可用变量：<code class="inline-code">FIRMWARE_ID</code>、<code
-                                    class="inline-code">MAC</code>（由沙箱注入）。
+                                Node.js ESM 脚本，运行于沙箱。可用变量：
+                                <code class="inline-code">FIRMWARE_ID</code>、<code class="inline-code">MAC</code>。
                             </p>
                         </div>
                     </div>
                     <div v-if="loadingScript" class="state-text">加载中…</div>
-                    <textarea v-else v-model="scriptContent" class="code-editor" rows="24" placeholder="// 在此编写激活码生成脚本（ESM 格式）
-// 可用变量: FIRMWARE_ID, MAC (由沙箱自动注入)
-//
-// 示例：
-// const resp = await fetch('https://your-api.com/activate?mac=' + MAC + '&fw=' + FIRMWARE_ID)
-// const json = await resp.json()
-// console.log(json.code)
-" spellcheck="false"></textarea>
+                    <textarea v-else v-model="scriptContent" class="code-editor" rows="24"
+                        spellcheck="false"></textarea>
                     <div class="button-row">
                         <button class="primary-button" @click="saveScript" :disabled="savingScript">
                             {{ savingScript ? '保存中…' : '保存脚本' }}
@@ -116,25 +133,24 @@
             </div>
         </div>
 
-        <!-- ── 分组编辑弹窗 ── -->
+        <!-- ── 分组设置弹窗 ── -->
         <Teleport to="body">
             <Transition name="modal-fade">
                 <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
-                    <div class="modal-container large-modal">
+                    <div class="modal-container">
                         <div class="modal-header">
-                            <h2 class="modal-title">{{ editingGroup ? '编辑分组' : '新增分组' }}</h2>
+                            <h2 class="modal-title">{{ editingGroupIdx === null ? '创建新分组' : '分组设置' }}</h2>
                             <button class="popup-close-btn" @click="closeGroupModal">✕</button>
                         </div>
                         <div class="modal-body">
                             <div class="field-grid">
                                 <div class="field-group">
                                     <label class="field-label">分组名称 *</label>
-                                    <input v-model="groupForm.label" class="text-input" placeholder="如：5寸机型高级激活" />
+                                    <input v-model="groupForm.label" class="text-input" placeholder="如：5寸机型激活" />
                                 </div>
                                 <div class="field-group">
                                     <label class="field-label">激活编号（activation_type_id）</label>
-                                    <input v-model="groupForm.activation_type_id" class="text-input"
-                                        placeholder="留空表示仅展示、不参与激活" />
+                                    <input v-model="groupForm.activation_id" class="text-input" placeholder="留空表示仅展示" />
                                 </div>
                                 <div class="field-group">
                                     <label class="field-label">积分定价</label>
@@ -147,75 +163,106 @@
                                         placeholder="0" />
                                 </div>
                             </div>
-
-                            <div class="firmwares-editor">
-                                <div class="fw-editor-header">
-                                    <span class="field-label">固件条目列表</span>
-                                    <button class="secondary-button small-btn" @click="addFirmwareRow">+ 添加固件</button>
-                                </div>
-                                <div v-if="!groupForm.firmwares.length" class="state-text small">暂无固件，点击右侧按钮添加</div>
-                                <div v-for="(fw, idx) in groupForm.firmwares" :key="idx" class="fw-editor-row">
-                                    <div class="fw-editor-fields">
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">firmware_id *</label>
-                                            <input v-model="fw.firmware_id" class="text-input" placeholder="唯一标识（必填）" />
-                                        </div>
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">名称</label>
-                                            <input v-model="fw.name" class="text-input" placeholder="显示名称" />
-                                        </div>
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">尺寸</label>
-                                            <input v-model="fw.screen_size" class="text-input" placeholder="如：5.0寸" />
-                                        </div>
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">描述</label>
-                                            <input v-model="fw.description" class="text-input" placeholder="简短描述" />
-                                        </div>
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">图片 URL</label>
-                                            <div class="upload-row">
-                                                <input v-model="fw.image_url" class="text-input"
-                                                    placeholder="https://... 或点击上传" />
-                                                <button type="button" class="upload-btn" @click="triggerUploadImage(fw)"
-                                                    :disabled="uploading" title="上传图片">📁 上传图片</button>
-                                                <button v-if="fw.image_url && fw.image_url.startsWith('/providers/')"
-                                                    type="button" class="clear-file-btn"
-                                                    @click="clearProviderFile(fw, 'image_url')"
-                                                    title="从服务器删除此图片">✕</button>
-                                            </div>
-                                        </div>
-                                        <div class="fw-input-wrap">
-                                            <label class="fw-input-label">下载 URL（固件）</label>
-                                            <div class="upload-row">
-                                                <input v-model="fw.download_url" class="text-input"
-                                                    placeholder="https://... 或点击上传" />
-                                                <button type="button" class="upload-btn"
-                                                    @click="triggerUploadFirmware(fw)" :disabled="uploading"
-                                                    title="上传固件文件">📁 上传固件</button>
-                                                <button
-                                                    v-if="fw.download_url && fw.download_url.startsWith('/providers/')"
-                                                    type="button" class="clear-file-btn"
-                                                    @click="clearProviderFile(fw, 'download_url')"
-                                                    title="从服务器删除此固件">✕</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button class="icon-btn danger" @click="removeFirmwareRow(idx)"
-                                        title="删除此固件">🗑️</button>
-                                </div>
-                            </div>
                         </div>
                         <div class="modal-footer">
                             <button class="secondary-button" @click="closeGroupModal">取消</button>
-                            <button class="primary-button" @click="saveGroup" :disabled="savingGroup">
-                                {{ savingGroup ? '保存中…' : '确认保存' }}
+                            <button class="primary-button" @click="saveGroupModal" :disabled="saving">
+                                {{ saving ? '保存中…' : '确认保存' }}
                             </button>
                         </div>
                     </div>
                 </div>
             </Transition>
         </Teleport>
+
+        <!-- ── 固件编辑弹窗 ── -->
+        <Teleport to="body">
+            <Transition name="modal-fade">
+                <div v-if="showFirmwareModal" class="modal-overlay" @click.self="closeFirmwareModal">
+                    <div class="modal-container large-modal">
+                        <div class="modal-header">
+                            <h2 class="modal-title">{{ editingFirmwareIdx === null ? '新增固件' : '编辑固件' }}</h2>
+                            <button class="popup-close-btn" @click="closeFirmwareModal">✕</button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="field-grid">
+                                <div class="field-group">
+                                    <label class="field-label">firmware_id *</label>
+                                    <input v-model="fwForm.firmware_id" class="text-input" placeholder="唯一标识（必填）" />
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">名称</label>
+                                    <input v-model="fwForm.name" class="text-input" placeholder="显示名称" />
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">屏幕尺寸</label>
+                                    <input v-model="fwForm.screen_size" class="text-input" placeholder="如：5.0寸" />
+                                </div>
+                                <div class="field-group">
+                                    <label class="field-label">描述</label>
+                                    <input v-model="fwForm.description" class="text-input" placeholder="简短描述" />
+                                </div>
+                            </div>
+
+                            <!-- 封面图上传 -->
+                            <div class="upload-section">
+                                <div class="upload-section-header">
+                                    <span class="field-label">封面图</span>
+                                    <div class="upload-btn-row">
+                                        <button type="button" class="upload-btn" :disabled="!!uploading"
+                                            @click="triggerImageUpload">
+                                            📁 {{ uploading === 'image' ? '上传中…' : '选择图片' }}
+                                        </button>
+                                        <button v-if="fwForm.image_filename" type="button" class="clear-file-btn"
+                                            @click="clearImage">✕ 清除</button>
+                                    </div>
+                                </div>
+                                <div v-if="fwForm.image_display_url" class="image-preview-wrap">
+                                    <img :src="resolveDisplayUrl(fwForm.image_display_url)" class="preview-img" />
+                                </div>
+                                <div v-else class="no-file-hint">未上传封面图</div>
+                            </div>
+
+                            <!-- 固件文件上传 -->
+                            <div class="upload-section">
+                                <div class="upload-section-header">
+                                    <span class="field-label">固件文件</span>
+                                    <div class="upload-btn-row">
+                                        <button type="button" class="upload-btn" :disabled="!!uploading"
+                                            @click="triggerFirmwareUpload">
+                                            📁 {{ uploading === 'firmware' ? '上传中…' : '选择固件' }}
+                                        </button>
+                                        <button v-if="fwForm.download_filename" type="button" class="clear-file-btn"
+                                            @click="clearFirmware">✕ 清除</button>
+                                    </div>
+                                </div>
+                                <div v-if="fwForm.download_filename" class="file-name-hint">
+                                    已上传：{{ fwForm.download_filename }}
+                                </div>
+                                <div v-else class="no-file-hint">未上传固件文件</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button class="secondary-button" @click="closeFirmwareModal">取消</button>
+                            <button class="primary-button" @click="saveFirmwareModal" :disabled="saving || !!uploading">
+                                {{ saving ? '保存中…' : '确认保存' }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+        </Teleport>
+
+        <!--
+            隐藏文件输入框 —— 必须始终存在于 DOM 中（而非动态创建），
+            这是修复 iOS Safari 上点击游离 input 触发页面刷新崩溃的关键。
+        -->
+        <input ref="imageFileInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp,image/bmp"
+            style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none"
+            @change="handleImageFileChange" />
+        <input ref="firmwareFileInput" type="file"
+            style="position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none"
+            @change="handleFirmwareFileChange" />
     </div>
 </template>
 
@@ -230,9 +277,41 @@ const router = useRouter()
 const { state: authState } = useAuth()
 const { showToast } = useToast()
 
-const hasProvider = computed(() => !!authState.user?.provider)
-const providerName = computed(() => authState.user?.provider?.name || '')
 const token = computed(() => authState.token)
+
+// ── 提供商选择 ────────────────────────────────────────────────────────────────
+const myProviders = ref([])
+const selectedUuid = ref(null)
+const pageLoading = ref(true)
+
+const selectedProviderName = computed(() =>
+    myProviders.value.find(p => p.uuid === selectedUuid.value)?.name ?? ''
+)
+
+async function loadMyProviders() {
+    pageLoading.value = true
+    try {
+        const data = await apiPost('/api/provider/my-providers', {})
+        if (data.type === 'success') {
+            myProviders.value = data.providers ?? []
+            if (myProviders.value.length === 1) {
+                selectedUuid.value = myProviders.value[0].uuid
+                await loadCatalog()
+            }
+        } else {
+            showToast(data.message || '获取提供商列表失败', 'error', 3000)
+        }
+    } catch (e) {
+        showToast(e.message || '网络错误', 'error', 3000)
+    } finally {
+        pageLoading.value = false
+    }
+}
+
+async function selectProvider(uuid) {
+    selectedUuid.value = uuid
+    await loadCatalog()
+}
 
 // ── 标签页 ────────────────────────────────────────────────────────────────────
 const tabs = [
@@ -241,19 +320,12 @@ const tabs = [
 ]
 const activeTab = ref('catalog')
 
-function switchTab(key) {
+async function switchTab(key) {
     activeTab.value = key
-    if (key === 'catalog') loadCatalog()
-    if (key === 'script' && scriptContent.value === null) loadScript()
+    if (key === 'script' && scriptContent.value === null) await loadScript()
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
-async function apiGet(path) {
-    const url = buildApiUrl(path) + '?token=' + encodeURIComponent(token.value)
-    const res = await fetch(url, { method: 'GET', headers: { 'Authorization': 'Bearer ' + token.value } })
-    return res.json()
-}
-
 async function apiPost(path, body) {
     const res = await fetch(buildApiUrl(path), {
         method: 'POST',
@@ -263,35 +335,17 @@ async function apiPost(path, body) {
     return res.json()
 }
 
-async function apiPut(path, body) {
-    const res = await fetch(buildApiUrl(path), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, token: token.value }),
-    })
-    return res.json()
-}
-
-async function apiDelete(path, body) {
-    const res = await fetch(buildApiUrl(path), {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...body, token: token.value }),
-    })
-    return res.json()
-}
-
 // ── 固件目录 ──────────────────────────────────────────────────────────────────
 const groups = ref([])
 const loadingCatalog = ref(false)
-const expandedGroups = ref(new Set())
 
 async function loadCatalog() {
+    if (!selectedUuid.value) return
     loadingCatalog.value = true
     try {
-        const data = await apiGet('/api/provider/catalog')
+        const data = await apiPost('/api/provider/catalog/load', { provider_uuid: selectedUuid.value })
         if (data.type === 'success') {
-            groups.value = data.groups || []
+            groups.value = (data.groups ?? []).map(g => ({ ...g, firmwares: g.firmwares ?? [] }))
         } else {
             showToast(data.message || '目录加载失败', 'error', 3000)
         }
@@ -302,91 +356,274 @@ async function loadCatalog() {
     }
 }
 
-function toggleFirmwares(id) {
-    const s = new Set(expandedGroups.value)
-    if (s.has(id)) s.delete(id)
-    else s.add(id)
-    expandedGroups.value = s
+/** 把当前 groups 全量发送给后端保存，返回是否成功 */
+async function saveAll() {
+    try {
+        const data = await apiPost('/api/provider/catalog/save', {
+            provider_uuid: selectedUuid.value,
+            groups: groups.value.map(g => ({
+                label: g.label,
+                activation_id: g.activation_id ?? null,
+                points: Number(g.points) || 0,
+                sort_order: Number(g.sort_order) || 0,
+                firmwares: g.firmwares.map(fw => ({
+                    firmware_id: fw.firmware_id,
+                    name: fw.name ?? '',
+                    screen_size: fw.screen_size ?? '',
+                    description: fw.description ?? '',
+                    image_filename: fw.image_filename ?? null,
+                    download_filename: fw.download_filename ?? null,
+                })),
+            })),
+        })
+        if (data.type !== 'success') {
+            showToast(data.message || '保存失败', 'error', 3000)
+            return false
+        }
+        return true
+    } catch (e) {
+        showToast(e.message || '保存时网络错误', 'error', 3000)
+        return false
+    }
 }
 
-// ── 分组弹窗 ──────────────────────────────────────────────────────────────────
+// ── 删除操作 ──────────────────────────────────────────────────────────────────
+async function deleteGroup(gi) {
+    const g = groups.value[gi]
+    if (!confirm(`确认删除分组「${g.label}」？\n\n该分组下所有固件条目及相关服务器文件将被删除，不可恢复。`)) return
+    groups.value.splice(gi, 1)
+    const success = await saveAll()
+    if (success) showToast('分组已删除', 'success', 2500)
+    else await loadCatalog() // 回滚
+}
+
+async function deleteFirmware(gi, fi) {
+    const fw = groups.value[gi].firmwares[fi]
+    if (!confirm(`确认删除固件「${fw.firmware_id}」？`)) return
+    groups.value[gi].firmwares.splice(fi, 1)
+    const success = await saveAll()
+    if (success) showToast('固件已删除', 'success', 2500)
+    else await loadCatalog() // 回滚
+}
+
+// ── 分组设置弹窗 ──────────────────────────────────────────────────────────────
 const showGroupModal = ref(false)
-const editingGroup = ref(null)
-const savingGroup = ref(false)
+const editingGroupIdx = ref(null)
+const saving = ref(false)
+const groupForm = ref({ label: '', activation_id: '', points: 0, sort_order: 0 })
 
-function emptyFirmware() {
-    return { firmware_id: '', name: '', screen_size: '', description: '', image_url: '', download_url: '' }
-}
-
-const groupForm = ref({ label: '', activation_type_id: '', points: 0, sort_order: 0, firmwares: [] })
-
-function openAddGroup() {
-    editingGroup.value = null
-    groupForm.value = { label: '', activation_type_id: '', points: 0, sort_order: 0, firmwares: [] }
+function openAddGroupModal() {
+    editingGroupIdx.value = null
+    groupForm.value = { label: '', activation_id: '', points: 0, sort_order: 0 }
     showGroupModal.value = true
 }
 
-function openEditGroup(g) {
-    editingGroup.value = g
+function openGroupSettingsModal(gi) {
+    const g = groups.value[gi]
+    editingGroupIdx.value = gi
     groupForm.value = {
         label: g.label,
-        activation_type_id: g.activation_id || '',
-        points: g.points || 0,
-        sort_order: g.sort_order || 0,
-        firmwares: (g.firmwares || []).map(f => ({ ...f })),
+        activation_id: g.activation_id ?? '',
+        points: g.points ?? 0,
+        sort_order: g.sort_order ?? 0,
     }
     showGroupModal.value = true
 }
 
 function closeGroupModal() { showGroupModal.value = false }
-function addFirmwareRow() { groupForm.value.firmwares.push(emptyFirmware()) }
-function removeFirmwareRow(idx) { groupForm.value.firmwares.splice(idx, 1) }
 
-async function saveGroup() {
+async function saveGroupModal() {
     if (!groupForm.value.label.trim()) {
         showToast('请填写分组名称', 'warning', 2500)
         return
     }
-    savingGroup.value = true
+    saving.value = true
     try {
-        const payload = {
-            label: groupForm.value.label.trim(),
-            activation_type_id: groupForm.value.activation_type_id.trim() || null,
-            points: Number(groupForm.value.points) || 0,
-            sort_order: Number(groupForm.value.sort_order) || 0,
-            firmwares: groupForm.value.firmwares.filter(f => f.firmware_id.trim()),
+        if (editingGroupIdx.value === null) {
+            groups.value.push({
+                id: null,
+                label: groupForm.value.label.trim(),
+                activation_id: groupForm.value.activation_id.trim() || null,
+                points: Number(groupForm.value.points) || 0,
+                sort_order: Number(groupForm.value.sort_order) || 0,
+                firmwares: [],
+            })
+        } else {
+            const g = groups.value[editingGroupIdx.value]
+            g.label = groupForm.value.label.trim()
+            g.activation_id = groupForm.value.activation_id.trim() || null
+            g.points = Number(groupForm.value.points) || 0
+            g.sort_order = Number(groupForm.value.sort_order) || 0
         }
-        const data = editingGroup.value
-            ? await apiPut(`/api/provider/catalog/${editingGroup.value.id}`, payload)
-            : await apiPost('/api/provider/catalog', payload)
-
-        if (data.type === 'success') {
-            showToast(editingGroup.value ? '分组已更新' : '分组已新增', 'success', 2500)
+        const success = await saveAll()
+        if (success) {
+            showToast(editingGroupIdx.value === null ? '分组已创建' : '分组已更新', 'success', 2500)
             closeGroupModal()
             await loadCatalog()
         } else {
-            showToast(data.message || '保存失败', 'error', 3000)
+            await loadCatalog() // 回滚
         }
-    } catch (e) {
-        showToast(e.message || '网络错误', 'error', 3000)
     } finally {
-        savingGroup.value = false
+        saving.value = false
     }
 }
 
-async function confirmDeleteGroup(g) {
-    if (!confirm(`确认删除分组「${g.label}」？\n\n此操作不可恢复，删除后该分组的固件、激活编号及相关服务器文件将全部移除。`)) return
-    try {
-        const data = await apiDelete(`/api/provider/catalog/${g.id}`, {})
-        if (data.type === 'success') {
-            showToast('分组已删除', 'success', 2500)
-            await loadCatalog()
-        } else {
-            showToast(data.message || '删除失败', 'error', 3000)
-        }
-    } catch (e) {
-        showToast(e.message || '网络错误', 'error', 3000)
+// ── 固件编辑弹窗 ──────────────────────────────────────────────────────────────
+const showFirmwareModal = ref(false)
+const editingGroupIdxForFw = ref(null)
+const editingFirmwareIdx = ref(null)
+const uploading = ref(null) // null | 'image' | 'firmware'
+
+const fwForm = ref({
+    firmware_id: '', name: '', screen_size: '', description: '',
+    image_filename: null, download_filename: null,
+    image_display_url: null, download_display_url: null,
+})
+
+function openAddFirmwareModal(gi) {
+    editingGroupIdxForFw.value = gi
+    editingFirmwareIdx.value = null
+    fwForm.value = {
+        firmware_id: '', name: '', screen_size: '', description: '',
+        image_filename: null, download_filename: null,
+        image_display_url: null, download_display_url: null,
     }
+    showFirmwareModal.value = true
+}
+
+function openEditFirmwareModal(gi, fi) {
+    const fw = groups.value[gi].firmwares[fi]
+    editingGroupIdxForFw.value = gi
+    editingFirmwareIdx.value = fi
+    fwForm.value = {
+        firmware_id: fw.firmware_id,
+        name: fw.name ?? '',
+        screen_size: fw.screen_size ?? '',
+        description: fw.description ?? '',
+        image_filename: fw.image_filename ?? null,
+        download_filename: fw.download_filename ?? null,
+        image_display_url: fw.image_display_url ?? null,
+        download_display_url: fw.download_display_url ?? null,
+    }
+    showFirmwareModal.value = true
+}
+
+function closeFirmwareModal() { showFirmwareModal.value = false }
+
+async function saveFirmwareModal() {
+    if (!fwForm.value.firmware_id.trim()) {
+        showToast('请填写 firmware_id', 'warning', 2500)
+        return
+    }
+    saving.value = true
+    try {
+        const fw = {
+            firmware_id: fwForm.value.firmware_id.trim(),
+            name: fwForm.value.name,
+            screen_size: fwForm.value.screen_size,
+            description: fwForm.value.description,
+            image_filename: fwForm.value.image_filename,
+            download_filename: fwForm.value.download_filename,
+            image_display_url: fwForm.value.image_display_url,
+            download_display_url: fwForm.value.download_display_url,
+        }
+        const gi = editingGroupIdxForFw.value
+        if (editingFirmwareIdx.value === null) {
+            groups.value[gi].firmwares.push(fw)
+        } else {
+            groups.value[gi].firmwares[editingFirmwareIdx.value] = fw
+        }
+        const success = await saveAll()
+        if (success) {
+            showToast(editingFirmwareIdx.value === null ? '固件已添加' : '固件已更新', 'success', 2500)
+            closeFirmwareModal()
+        } else {
+            await loadCatalog() // 回滚
+        }
+    } finally {
+        saving.value = false
+    }
+}
+
+// ── 文件上传（ref 指向始终在 DOM 中的隐藏 input，修复 iOS Safari 崩溃问题） ──
+const imageFileInput = ref(null)
+const firmwareFileInput = ref(null)
+
+function triggerImageUpload() { imageFileInput.value?.click() }
+function triggerFirmwareUpload() { firmwareFileInput.value?.click() }
+
+async function handleImageFileChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = '' // 重置，允许重复选同一文件
+    uploading.value = 'image'
+    try {
+        const url = buildApiUrl(
+            `/api/provider/upload-image?token=${encodeURIComponent(token.value)}&provider_uuid=${encodeURIComponent(selectedUuid.value)}&filename=${encodeURIComponent(file.name)}`
+        )
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': file.type || 'application/octet-stream' },
+            body: file, // 直接发送原始 File 对象，无任何文本编码
+        })
+        const data = await res.json()
+        if (data.type === 'success') {
+            fwForm.value.image_filename = data.filename
+            fwForm.value.image_display_url = `/providers/${selectedUuid.value}/${data.filename}`
+            showToast('封面图上传成功', 'success', 2500)
+        } else {
+            showToast(data.message || '上传失败', 'error', 3000)
+        }
+    } catch (err) {
+        showToast(err.message || '上传出错', 'error', 3000)
+    } finally {
+        uploading.value = null
+    }
+}
+
+async function handleFirmwareFileChange(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+    uploading.value = 'firmware'
+    try {
+        const url = buildApiUrl(
+            `/api/provider/upload-firmware?token=${encodeURIComponent(token.value)}&provider_uuid=${encodeURIComponent(selectedUuid.value)}&filename=${encodeURIComponent(file.name)}`
+        )
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: file, // 直接流式发送，浏览器自动分段，无任何文本处理
+        })
+        const data = await res.json()
+        if (data.type === 'success') {
+            fwForm.value.download_filename = data.filename
+            fwForm.value.download_display_url = `/providers/${selectedUuid.value}/${data.filename}`
+            showToast('固件上传成功', 'success', 2500)
+        } else {
+            showToast(data.message || '上传失败', 'error', 3000)
+        }
+    } catch (err) {
+        showToast(err.message || '上传出错', 'error', 3000)
+    } finally {
+        uploading.value = null
+    }
+}
+
+function clearImage() {
+    fwForm.value.image_filename = null
+    fwForm.value.image_display_url = null
+}
+
+function clearFirmware() {
+    fwForm.value.download_filename = null
+    fwForm.value.download_display_url = null
+}
+
+function resolveDisplayUrl(url) {
+    if (!url) return url
+    if (url.startsWith('/providers/')) return buildApiUrl(url)
+    return url
 }
 
 // ── 激活脚本 ──────────────────────────────────────────────────────────────────
@@ -395,9 +632,10 @@ const loadingScript = ref(false)
 const savingScript = ref(false)
 
 async function loadScript() {
+    if (!selectedUuid.value) return
     loadingScript.value = true
     try {
-        const data = await apiGet('/api/provider/script')
+        const data = await apiPost('/api/provider/script/load', { provider_uuid: selectedUuid.value })
         scriptContent.value = data.type === 'success' ? (data.content || '') : ''
         if (data.type !== 'success') showToast(data.message || '脚本加载失败', 'error', 3000)
     } catch (e) {
@@ -411,7 +649,10 @@ async function loadScript() {
 async function saveScript() {
     savingScript.value = true
     try {
-        const data = await apiPut('/api/provider/script', { content: scriptContent.value })
+        const data = await apiPost('/api/provider/script/save', {
+            provider_uuid: selectedUuid.value,
+            content: scriptContent.value,
+        })
         if (data.type === 'success') showToast('脚本已保存', 'success', 2500)
         else showToast(data.message || '保存失败', 'error', 3000)
     } catch (e) {
@@ -421,94 +662,12 @@ async function saveScript() {
     }
 }
 
-// ── 文件上传 ──────────────────────────────────────────────────────────────────
-const uploading = ref(false)
-
-function fileToBase64(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onload = (e) => resolve(e.target.result.split(',')[1])
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-    })
-}
-
-function triggerUploadImage(fw) {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/jpeg,image/png,image/gif,image/webp,image/bmp'
-    input.onchange = async (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-        uploading.value = true
-        try {
-            const base64 = await fileToBase64(file)
-            const ext = file.name.split('.').pop() || 'jpg'
-            const data = await apiPost('/api/provider/upload-image', { file_base64: base64, file_ext: ext })
-            if (data.type === 'success') {
-                fw.image_url = data.url
-                showToast('图片上传成功', 'success', 2500)
-            } else {
-                showToast(data.message || '上传失败', 'error', 3000)
-            }
-        } catch (err) {
-            showToast(err.message || '上传出错', 'error', 3000)
-        } finally {
-            uploading.value = false
-        }
-    }
-    input.click()
-}
-
-function triggerUploadFirmware(fw) {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.onchange = async (e) => {
-        const file = e.target.files[0]
-        if (!file) return
-        uploading.value = true
-        try {
-            const base64 = await fileToBase64(file)
-            const data = await apiPost('/api/provider/upload-firmware', { file_base64: base64, filename: file.name })
-            if (data.type === 'success') {
-                fw.download_url = data.url
-                showToast('固件上传成功', 'success', 2500)
-            } else {
-                showToast(data.message || '上传失败', 'error', 3000)
-            }
-        } catch (err) {
-            showToast(err.message || '上传出错', 'error', 3000)
-        } finally {
-            uploading.value = false
-        }
-    }
-    input.click()
-}
-
-async function clearProviderFile(fw, field) {
-    const url = fw[field]
-    if (!url) return
-    if (!confirm(`确认从服务器删除此文件？\n${url}\n\n注意：此操作不可恢复`)) return
-    try {
-        const data = await apiDelete('/api/provider/file', { url })
-        if (data.type === 'success') {
-            fw[field] = ''
-            showToast('文件已从服务器删除', 'success', 2500)
-        } else {
-            showToast(data.message || '删除失败', 'error', 3000)
-        }
-    } catch (err) {
-        showToast(err.message || '删除出错', 'error', 3000)
-    }
-}
-
 // ── 初始化 ────────────────────────────────────────────────────────────────────
-onMounted(() => {
-    if (hasProvider.value) loadCatalog()
-})
+onMounted(loadMyProviders)
 </script>
 
 <style scoped>
+/* ── 无权限 ── */
 .no-permission-card {
     max-width: 480px;
     margin: 80px auto 0;
@@ -535,6 +694,42 @@ onMounted(() => {
     margin: 0 0 24px;
     font-size: 14px;
     line-height: 1.7;
+}
+
+/* ── 提供商选择 ── */
+.provider-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 480px;
+}
+
+.provider-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 22px;
+    border-radius: 16px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.1);
+    background: rgba(var(--card-background-rgb), 0.7);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-color);
+}
+
+.provider-btn:hover {
+    border-color: var(--theme-color);
+    background: rgba(var(--theme-color-rgb), 0.06);
+}
+
+.provider-btn-name {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.provider-btn-arrow {
+    color: var(--secondary-text-color);
+    font-size: 18px;
 }
 
 /* ── 标签页 ── */
@@ -568,7 +763,7 @@ onMounted(() => {
     color: var(--theme-color);
 }
 
-/* ── 通用状态文字 ── */
+/* ── 通用 ── */
 .state-text {
     padding: 24px;
     text-align: center;
@@ -586,18 +781,21 @@ onMounted(() => {
     font-size: 13px !important;
 }
 
-/* ── 分组列表 ── */
-.groups-list {
+/* ── 目录顶部栏 ── */
+.catalog-topbar {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    margin-top: 16px;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+    gap: 16px;
 }
 
-.group-card {
+/* ── 分组块 ── */
+.group-block {
     border: 1px solid rgba(var(--text-color-rgb), 0.08);
     border-radius: 16px;
     overflow: hidden;
+    margin-bottom: 14px;
 }
 
 .group-header {
@@ -607,6 +805,7 @@ onMounted(() => {
     padding: 14px 16px;
     background: rgba(var(--text-color-rgb), 0.025);
     gap: 12px;
+    flex-wrap: wrap;
 }
 
 .group-meta {
@@ -651,10 +850,34 @@ onMounted(() => {
     color: var(--secondary-text-color);
 }
 
+.tag-empty {
+    background: rgba(var(--text-color-rgb), 0.04);
+    color: rgba(var(--text-color-rgb), 0.35);
+}
+
 .group-actions {
     display: flex;
     gap: 6px;
+    align-items: center;
     flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--theme-color-rgb), 0.3);
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.action-btn:hover {
+    background: rgba(var(--theme-color-rgb), 0.18);
 }
 
 .icon-btn {
@@ -680,72 +903,179 @@ onMounted(() => {
     border-color: rgba(239, 68, 68, 0.3);
 }
 
-/* ── 固件折叠列表 ── */
-.firmwares-section {
+/* ── 固件列表 ── */
+.firmware-list {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
     border-top: 1px solid rgba(var(--text-color-rgb), 0.06);
 }
 
-.firmwares-toggle {
+.fw-item {
     display: flex;
-    justify-content: space-between;
-    padding: 10px 16px;
-    font-size: 13px;
-    color: var(--secondary-text-color);
-    cursor: pointer;
-    user-select: none;
-    transition: background 0.2s;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.06);
+    background: rgba(var(--text-color-rgb), 0.02);
 }
 
-.firmwares-toggle:hover {
-    background: rgba(var(--text-color-rgb), 0.03);
+.fw-thumb {
+    flex-shrink: 0;
+    width: 54px;
+    height: 54px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--text-color-rgb), 0.08);
+    background: rgba(var(--text-color-rgb), 0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.firmwares-list {
-    padding: 0 16px 14px;
+.fw-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.fw-img-placeholder {
+    font-size: 22px;
+}
+
+.fw-info {
+    flex: 1;
+    min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 3px;
 }
 
-.firmware-row {
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: rgba(var(--text-color-rgb), 0.03);
-    border: 1px solid rgba(var(--text-color-rgb), 0.06);
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
+.fw-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--theme-color);
+    font-weight: 600;
 }
 
-.fw-field {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
-    flex: 1 1 200px;
-    min-width: 0;
-}
-
-.fw-key {
-    font-size: 11px;
+.fw-name {
+    font-size: 14px;
     font-weight: 700;
+    color: var(--text-color);
+}
+
+.fw-desc {
+    font-size: 12px;
     color: var(--secondary-text-color);
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fw-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 4px;
+}
+
+.fw-actions {
+    display: flex;
+    gap: 6px;
     flex-shrink: 0;
 }
 
-.fw-val {
+/* ── 上传区块 ── */
+.upload-section {
+    margin-top: 16px;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.08);
+    background: rgba(var(--text-color-rgb), 0.02);
+}
+
+.upload-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.upload-btn-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.upload-btn {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(var(--theme-color-rgb), 0.3);
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
     font-size: 12px;
-    color: var(--text-color);
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.upload-btn:hover:not(:disabled) {
+    background: rgba(var(--theme-color-rgb), 0.18);
+}
+
+.upload-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.clear-file-btn {
+    padding: 5px 9px;
+    border-radius: 7px;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.08);
+    color: #ef4444;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.clear-file-btn:hover {
+    background: rgba(239, 68, 68, 0.18);
+}
+
+.image-preview-wrap {
+    margin-top: 10px;
+    max-width: 200px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(var(--text-color-rgb), 0.1);
+}
+
+.preview-img {
+    width: 100%;
+    display: block;
+    object-fit: contain;
+    max-height: 160px;
+}
+
+.file-name-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color: var(--theme-color);
     word-break: break-all;
 }
 
-.fw-val.mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
-
-.url-val {
-    color: var(--theme-color);
-    font-size: 11px;
+.no-file-hint {
+    margin-top: 8px;
+    font-size: 12px;
+    color: var(--secondary-text-color);
 }
 
 /* ── 代码编辑器 ── */
@@ -828,7 +1158,7 @@ onMounted(() => {
 }
 
 .large-modal {
-    max-width: 740px;
+    max-width: 680px;
 }
 
 .modal-header {
@@ -878,101 +1208,27 @@ onMounted(() => {
     flex-shrink: 0;
 }
 
-/* ── 固件编辑器 ── */
-.firmwares-editor {
-    margin-top: 20px;
-}
-
-.fw-editor-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-}
-
-.fw-editor-row {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    padding: 14px;
-    border-radius: 12px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.08);
-    background: rgba(var(--text-color-rgb), 0.02);
-    margin-bottom: 10px;
-}
-
-.fw-editor-fields {
-    flex: 1;
+/* ── 表单 ── */
+.field-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
+    gap: 12px;
 }
 
-.fw-input-wrap {
+.field-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 6px;
 }
 
-.fw-input-label {
+.field-label {
     font-size: 12px;
+    font-weight: 700;
     color: var(--secondary-text-color);
-    font-weight: 600;
 }
 
-/* ── 文件上传 ── */
-.upload-row {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.upload-row .text-input {
-    flex: 1;
-    min-width: 0;
-}
-
-.upload-btn {
-    padding: 6px 9px;
-    border-radius: 8px;
-    border: 1px solid rgba(var(--theme-color-rgb), 0.3);
-    background: rgba(var(--theme-color-rgb), 0.08);
-    color: var(--theme-color);
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.upload-btn:hover:not(:disabled) {
-    background: rgba(var(--theme-color-rgb), 0.18);
-}
-
-.upload-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.clear-file-btn {
-    width: 26px;
-    height: 26px;
-    border-radius: 6px;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    background: rgba(239, 68, 68, 0.08);
-    color: #ef4444;
-    font-size: 12px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    flex-shrink: 0;
-}
-
-.clear-file-btn:hover {
-    background: rgba(239, 68, 68, 0.18);
+.mono {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 /* ── 动画 ── */
@@ -991,7 +1247,7 @@ onMounted(() => {
 
 /* ── 响应式 ── */
 @media (max-width: 600px) {
-    .fw-editor-fields {
+    .field-grid {
         grid-template-columns: 1fr;
     }
 
@@ -1013,7 +1269,11 @@ onMounted(() => {
         padding: 14px 16px;
     }
 
-    .upload-row {
+    .group-header {
+        flex-direction: column;
+    }
+
+    .fw-item {
         flex-wrap: wrap;
     }
 }
