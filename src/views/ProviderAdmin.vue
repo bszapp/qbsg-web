@@ -12,28 +12,12 @@
             <button class="primary-button" @click="$router.push('/')">返回主页</button>
         </div>
 
-        <!-- 多提供商选择界面 -->
-        <div v-else-if="myProviders.length > 1 && !selectedUuid" class="page-stack">
-            <section class="hero-card">
-                <span class="page-eyebrow">管理后台</span>
-                <h1 class="page-title">请选择要管理的提供商</h1>
-            </section>
-            <div class="provider-selector">
-                <button v-for="p in myProviders" :key="p.uuid" class="provider-btn" @click="selectProvider(p.uuid)">
-                    <span class="provider-btn-name">{{ p.name }}</span>
-                    <span class="provider-btn-arrow">→</span>
-                </button>
-            </div>
-        </div>
-
         <!-- 主界面 -->
         <div v-else-if="selectedUuid" class="page-stack">
             <section class="hero-card">
                 <span class="page-eyebrow">管理后台</span>
                 <div class="page-title-row">
                     <h1 class="page-title">{{ selectedProviderName }}</h1>
-                    <button v-if="myProviders.length > 1" class="secondary-button small-btn"
-                        @click="selectedUuid = null">切换提供商</button>
                 </div>
             </section>
 
@@ -267,7 +251,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
@@ -295,10 +279,6 @@ async function loadMyProviders() {
         const data = await apiPost('/api/provider/my-providers', {})
         if (data.type === 'success') {
             myProviders.value = data.providers ?? []
-            if (myProviders.value.length === 1) {
-                selectedUuid.value = myProviders.value[0].uuid
-                await loadCatalog()
-            }
         } else {
             showToast(data.message || '获取提供商列表失败', 'error', 3000)
         }
@@ -313,6 +293,20 @@ async function selectProvider(uuid) {
     selectedUuid.value = uuid
     await loadCatalog()
 }
+
+async function resetAndSelectProvider(uuid) {
+    groups.value = []
+    scriptContent.value = null
+    activeTab.value = 'catalog'
+    selectedUuid.value = uuid
+    await loadCatalog()
+}
+
+watch(() => route.query.id, async (newId) => {
+    if (newId && myProviders.value.some(p => p.uuid === newId)) {
+        await resetAndSelectProvider(newId)
+    }
+})
 
 // ── 标签页 ────────────────────────────────────────────────────────────────────
 const tabs = [
@@ -670,10 +664,11 @@ async function saveScript() {
 // ── 初始化 ────────────────────────────────────────────────────────────────────
 onMounted(async () => {
     await loadMyProviders()
-    // 如果 URL 带有 ?id=UUID，自动选中对应提供商
     const idParam = route.query.id
     if (idParam && myProviders.value.some(p => p.uuid === idParam)) {
-        selectProvider(idParam)
+        await resetAndSelectProvider(idParam)
+    } else if (myProviders.value.length > 0) {
+        await resetAndSelectProvider(myProviders.value[0].uuid)
     }
 })
 </script>
