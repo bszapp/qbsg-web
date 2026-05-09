@@ -105,15 +105,45 @@
             </svg>
             <span>个人设置</span>
           </div>
-          <div v-if="state.user?.provider" class="menu-item" @click="goToProvider">
-            <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-              stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8" />
-              <path d="M12 17v4" />
-            </svg>
-            <span>管理后台</span>
-          </div>
+
+          <!-- 管理后台二级菜单 -->
+          <template v-if="state.user?.providers?.length || state.user?.is_admin">
+            <div class="divider" />
+            <div class="menu-item menu-item-parent" @click="toggleAdminSubmenu">
+              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8" />
+                <path d="M12 17v4" />
+              </svg>
+              <span>管理后台</span>
+              <svg class="menu-caret" :class="{ open: showAdminSubmenu }" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="width:14px;height:14px;margin-left:auto;transition:transform .2s">
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+            <div v-if="showAdminSubmenu" class="submenu">
+              <div v-for="p in (state.user?.providers ?? [])" :key="p.uuid" class="menu-item submenu-item"
+                @click="goToProviderAdmin(p.uuid)">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <path
+                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                </svg>
+                <span>{{ p.name }}</span>
+              </div>
+              <div v-if="state.user?.is_admin" class="menu-item submenu-item" @click="goToWebAdmin">
+                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4l3 3" />
+                </svg>
+                <span>网站管理</span>
+              </div>
+            </div>
+          </template>
+
           <div class="divider" />
           <div class="menu-item" @click="handleLogout">
             <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -161,7 +191,8 @@
             @click="fwActiveProvider = null">全部</button>
           <button v-for="p in fwAllProviders" :key="p"
             :class="['gujian-tag-btn', fwActiveProvider === p ? 'gujian-tag-active' : '']"
-            @click="fwToggleProvider(p)">{{ p }}</button>
+            @click="fwToggleProvider(p)">{{
+              p }}</button>
         </div>
       </div>
 
@@ -226,6 +257,7 @@ import { computed, ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { navItems } from '../router/index.js'
 import ToastNotification from './ToastNotification.vue'
+import { useToast } from '../composables/useToast.js'
 import AuthGateModal from './AuthGateModal.vue'
 import { useAuth } from '../composables/useAuth.js'
 import ConfettiOverlay from './ConfettiOverlay.vue'
@@ -275,7 +307,11 @@ const {
   bootstrapAuth,
   logout,
   state,
+  handleLoginToken,
 } = useAuth()
+
+// 管理菜单展开状态
+const showAdminSubmenu = ref(false)
 
 const hasPreviousInternalRoute = ref(false)
 const previousRoute = ref(null)
@@ -440,9 +476,19 @@ function goToSettings() {
   router.push('/me/settings')
 }
 
-function goToProvider() {
+function goToProviderAdmin(uuid) {
   closeDropdown()
-  router.push('/me/provider')
+  router.push('/me/provideradmin?id=' + uuid)
+}
+
+function goToWebAdmin() {
+  closeDropdown()
+  router.push('/me/webadmin')
+}
+
+function toggleAdminSubmenu(e) {
+  e.stopPropagation()
+  showAdminSubmenu.value = !showAdminSubmenu.value
 }
 
 async function handleLogout() {
@@ -485,6 +531,9 @@ onMounted(async () => {
   await bootstrapAuth()
   handlePaymentReturnRoute()
   updateIndicator()
+  // 处理 URL 中的 logintoken 参数
+  const { showToast } = useToast()
+  handleLoginToken((msg, type, dur) => showToast(msg, type, dur))
 })
 
 onUnmounted(() => {
@@ -589,6 +638,25 @@ onUnmounted(() => {
 .dropdown-menu {
   width: 210px;
   margin-top: 4px;
+}
+
+.menu-item-parent {
+  cursor: pointer;
+}
+
+.submenu {
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  margin: 2px 4px;
+}
+
+.submenu-item {
+  padding-left: 28px !important;
+  font-size: 13px;
+}
+
+.menu-caret.open {
+  transform: rotate(180deg);
 }
 
 @media (max-width: 768px) {

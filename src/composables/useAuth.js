@@ -280,6 +280,31 @@ async function deleteAccount(payload) {
   }
 }
 
+/** 处理 URL 中的 ?logintoken= 参数 */
+function handleLoginToken(showToastFn) {
+  // hash router 的 query 在 window.location.hash 里
+  const hash = window.location.hash || ''
+  const qIdx = hash.indexOf('?')
+  if (qIdx === -1) return
+  const params = new URLSearchParams(hash.slice(qIdx + 1))
+  const loginToken = params.get('logintoken')
+  if (!loginToken) return
+
+  // 清理 URL（去掉 logintoken 参数）
+  params.delete('logintoken')
+  const newHash = hash.slice(0, qIdx) + (params.toString() ? '?' + params.toString() : '')
+  window.history.replaceState(null, '', window.location.pathname + window.location.search + newHash)
+
+  if (state.token && state.user) {
+    showToastFn('当前已经登录，logintoken 已忽略', 'warning', 3000)
+    return
+  }
+
+  // 未登录：记录 token 并刷新用户信息
+  saveToken(loginToken)
+  refreshProfile({ silent: false, showAuthToast: true })
+}
+
 export function useAuth() {
   return {
     state: readonly(state),
@@ -294,5 +319,6 @@ export function useAuth() {
     deleteAccount,
     updateUser,
     handleAuthFailure,
+    handleLoginToken,
   }
 }

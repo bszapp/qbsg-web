@@ -136,7 +136,7 @@
         <!-- ── 分组设置弹窗 ── -->
         <Teleport to="body">
             <Transition name="modal-fade">
-                <div v-if="showGroupModal" class="modal-overlay" @click.self="closeGroupModal">
+                <div v-if="showGroupModal" class="modal-overlay">
                     <div class="modal-container">
                         <div class="modal-header">
                             <h2 class="modal-title">{{ editingGroupIdx === null ? '创建新分组' : '分组设置' }}</h2>
@@ -178,7 +178,7 @@
         <!-- ── 固件编辑弹窗 ── -->
         <Teleport to="body">
             <Transition name="modal-fade">
-                <div v-if="showFirmwareModal" class="modal-overlay" @click.self="closeFirmwareModal">
+                <div v-if="showFirmwareModal" class="modal-overlay">
                     <div class="modal-container large-modal">
                         <div class="modal-header">
                             <h2 class="modal-title">{{ editingFirmwareIdx === null ? '新增固件' : '编辑固件' }}</h2>
@@ -268,12 +268,13 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
 import { buildApiUrl } from '../config/app.js'
 
 const router = useRouter()
+const route = useRoute()
 const { state: authState } = useAuth()
 const { showToast } = useToast()
 
@@ -599,6 +600,10 @@ async function handleFirmwareFileChange(e) {
         if (data.type === 'success') {
             fwForm.value.download_filename = data.filename
             fwForm.value.download_display_url = `/providers/${selectedUuid.value}/${data.filename}`
+            // 如果 firmware_id 或 name 为空，自动用文件名（去掉后缀）填写
+            const nameWithoutExt = file.name.replace(/\.[^.]+$/, '')
+            if (!fwForm.value.firmware_id.trim()) fwForm.value.firmware_id = nameWithoutExt
+            if (!fwForm.value.name.trim()) fwForm.value.name = nameWithoutExt
             showToast('固件上传成功', 'success', 2500)
         } else {
             showToast(data.message || '上传失败', 'error', 3000)
@@ -663,7 +668,14 @@ async function saveScript() {
 }
 
 // ── 初始化 ────────────────────────────────────────────────────────────────────
-onMounted(loadMyProviders)
+onMounted(async () => {
+    await loadMyProviders()
+    // 如果 URL 带有 ?id=UUID，自动选中对应提供商
+    const idParam = route.query.id
+    if (idParam && myProviders.value.some(p => p.uuid === idParam)) {
+        selectProvider(idParam)
+    }
+})
 </script>
 
 <style scoped>
