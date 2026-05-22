@@ -247,6 +247,12 @@
             <component :is="Component" :key="$route.path" />
           </Transition>
         </RouterView>
+
+        <!-- 备案信息 -->
+        <div class="icp-footer">
+          <a href="https://beian.miit.gov.cn/#/Integrated/recordQuery" target="_blank" rel="noopener noreferrer"
+            class="icp-link">苏ICP备2026030811号-1</a>
+        </div>
       </div>
     </div>
   </Transition>
@@ -668,5 +674,25 @@ onUnmounted(() => {
   .dropdown-menu {
     width: 196px;
   }
+}
+
+/* ---- 备案信息 ---- */
+.icp-footer {
+  text-align: center;
+  padding: 24px 0 16px;
+}
+
+.icp-link {
+  font-size: 11px;
+  color: var(--secondary-text-color, #999);
+  text-decoration: none;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+  letter-spacing: 0.02em;
+}
+
+.icp-link:hover {
+  opacity: 0.85;
+  text-decoration: underline;
 }
 </style>

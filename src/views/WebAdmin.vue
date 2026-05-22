@@ -1,5 +1,6 @@
 <template>
-    <div class="page-shell">
+    <div class="webadmin-root">
+        <div class="page-shell">
         <div class="page-stack">
 
             <!-- 无权限 -->
@@ -368,6 +369,7 @@
 
     <!-- Toast -->
     <div v-if="msg" class="wa-toast" :class="msgType" @click="msg = ''">{{ msg }}</div>
+    </div><!-- end webadmin-root -->
 </template>
 
 <script setup>
@@ -673,6 +675,11 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ── 根容器（单节点包装，修复 Vue Transition 多根节点动画问题）── */
+.webadmin-root {
+    display: contents;
+}
+
 /* ── 无权限 ── */
 .no-permission-card {
     max-width: 480px;
