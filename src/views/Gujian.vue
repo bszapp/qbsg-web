@@ -11,6 +11,9 @@
               <div class="group-label-row">
                 <span class="provider-badge">{{ group.provider }}</span>
                 <h2 class="section-title">{{ group.label }}</h2>
+                <span v-if="group.activation_id && group.activation_points !== null" class="points-badge">
+                  {{ group.activation_points }} 积分
+                </span>
               </div>
               <p class="section-desc">{{ group.firmwares.length }} 个固件版本</p>
             </div>
@@ -87,13 +90,66 @@ const loadError = ref('')
 
 onMounted(loadCatalog)
 
+function toGroupKey(providerName, activationId) {
+  const provider = String(providerName ?? '').trim()
+  const activation = String(activationId ?? '').trim()
+  if (!provider || !activation) return ''
+  return `${provider}::${activation}`
+}
+
+function normalizePoints(value) {
+  if (value === null || typeof value === 'undefined' || value === '') return null
+  const points = Number(value)
+  return Number.isFinite(points) ? points : null
+}
+
+function buildActivationPointsMap(providers) {
+  const pointsMap = new Map()
+
+  for (const provider of Array.isArray(providers) ? providers : []) {
+    for (const firmware of Array.isArray(provider?.firmwares) ? provider.firmwares : []) {
+      const key = toGroupKey(provider?.name, firmware?.id)
+      const points = normalizePoints(firmware?.points)
+      if (!key || points === null) continue
+      pointsMap.set(key, points)
+    }
+  }
+
+  return pointsMap
+}
+
+function mergeCatalogGroups(rawGroups, activationPointsMap) {
+  return (Array.isArray(rawGroups) ? rawGroups : []).map((group) => {
+    const matchedPoints = activationPointsMap.get(toGroupKey(group.provider, group.activation_id))
+    return {
+      ...group,
+      firmwares: Array.isArray(group.firmwares) ? group.firmwares : [],
+      activation_points: matchedPoints ?? normalizePoints(group.points),
+    }
+  })
+}
+
 async function loadCatalog() {
   loading.value = true
   loadError.value = ''
   try {
-    const data = await postJson('/api/firmware/catalog', {})
+    const [catalogResult, activationResult] = await Promise.allSettled([
+      postJson('/api/firmware/catalog', {}),
+      postJson('/api/activation/firmware-list', {}),
+    ])
+
+    if (catalogResult.status !== 'fulfilled') {
+      throw catalogResult.reason
+    }
+
+    const data = catalogResult.value
     if (data.type === 'success') {
-      groups.value = Array.isArray(data.groups) ? data.groups : []
+      const activationPointsMap =
+        activationResult.status === 'fulfilled' && activationResult.value?.type === 'success'
+          ? buildActivationPointsMap(activationResult.value.providers)
+          : new Map()
+
+      groups.value = mergeCatalogGroups(data.groups, activationPointsMap)
     } else {
       loadError.value = data.message || '固件列表加载失败'
       showToast(loadError.value, 'error', 3400)
@@ -139,6 +195,28 @@ function goActivate(group) {
   background: rgba(var(--theme-color-rgb), 0.1);
   color: var(--theme-color);
   white-space: nowrap;
+}
+
+.points-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(var(--theme-color-rgb), 0.14);
+  background: linear-gradient(180deg, rgba(var(--theme-color-rgb), 0.1), rgba(var(--theme-color-rgb), 0.04));
+  color: var(--secondary-text-color);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.points-badge svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  color: var(--theme-color);
 }
 
 .activate-group-btn {
