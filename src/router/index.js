@@ -3,6 +3,14 @@ import { defineComponent, h } from 'vue'
 import NProgress from 'nprogress'
 import { APP_BASE_PATH } from '../config/app.js'
 
+if (typeof window !== 'undefined') {
+  const rawHash = window.location.hash || ''
+  if (rawHash === '#loginonly' || rawHash.startsWith('#loginonly?')) {
+    const suffix = rawHash.slice('#loginonly'.length)
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.search}#/loginonly${suffix}`)
+  }
+}
+
 // ---- SVG 图标组件（不设内联尺寸，由 CSS 统一控制）----
 function svgIconRaw(children) {
   return defineComponent({
@@ -35,6 +43,7 @@ const Account = () => import('../views/Account.vue')
 const AccountSettings = () => import('../views/AccountSettings.vue')
 const ProviderAdmin = () => import('../views/ProviderAdmin.vue')
 const WebAdmin = () => import('../views/WebAdmin.vue')
+const LoginOnly = () => import('../views/LoginOnly.vue')
 
 export const navItems = [
   { path: '/', name: 'home', label: '主页', icon: DashboardIcon, component: Dashboard, requiresAuth: false },
@@ -54,6 +63,15 @@ const routes = [
       navPath: item.path,
     },
   })),
+  {
+    path: '/loginonly',
+    name: 'loginonly',
+    component: LoginOnly,
+    meta: {
+      requiresAuth: false,
+      standalone: true,
+    },
+  },
   {
     path: '/me/settings',
     name: 'me-settings',
