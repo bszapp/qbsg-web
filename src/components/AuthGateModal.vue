@@ -15,8 +15,10 @@
                 </svg>
               </button>
             </div>
-            <AuthPanel :mode="mode" :enable-remember-me="true" :login-action="handleLogin"
-              :register-action="handleRegister" @switch-mode="toggleMode" @auth-success="emitClose" />
+            <div class="auth-popup-content">
+              <AuthPanel :mode="mode" :enable-remember-me="true" :login-action="handleLogin"
+                :register-action="handleRegister" @switch-mode="toggleMode" @auth-success="emitClose" />
+            </div>
           </div>
         </Transition>
       </div>
@@ -127,6 +129,12 @@ function handleRegister(payload) {
   background-color: rgba(0, 0, 0, 0.05);
   color: var(--text-color);
   transform: rotate(90deg);
+}
+
+.auth-popup-content {
+  flex: 1;
+  min-height: 0;
+  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
 }
 
 @keyframes modal-in-03fee79b {

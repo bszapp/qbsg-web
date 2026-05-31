@@ -395,7 +395,6 @@ async function submitRegister() {
   padding: 20px;
   overflow-y: auto;
   flex: 1;
-  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
 }
 
 .auth-header {

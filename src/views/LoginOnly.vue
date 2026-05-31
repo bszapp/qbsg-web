@@ -83,6 +83,8 @@ async function submitRegister(payload) {
 .loginonly-card {
   width: 100%;
   max-width: 500px;
+  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
+  border-radius: 18px;
 }
 
 @media (max-width: 768px) {
