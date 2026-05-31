@@ -75,6 +75,7 @@ async function submitRegister(payload) {
   align-items: center;
   justify-content: center;
   background:
+    linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent),
     radial-gradient(circle at top left, rgba(var(--theme-color-rgb), 0.1), transparent 32%),
     radial-gradient(circle at bottom right, rgba(var(--theme-color-rgb), 0.08), transparent 28%),
     linear-gradient(180deg, rgba(var(--card-background-rgb), 0.92), rgba(var(--card-background-rgb), 0.98));
@@ -83,8 +84,6 @@ async function submitRegister(payload) {
 .loginonly-card {
   width: 100%;
   max-width: 500px;
-  background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
-  border-radius: 18px;
 }
 
 @media (max-width: 768px) {
