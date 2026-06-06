@@ -43,6 +43,7 @@ const Account = () => import('../views/Account.vue')
 const AccountSettings = () => import('../views/AccountSettings.vue')
 const ProviderAdmin = () => import('../views/ProviderAdmin.vue')
 const WebAdmin = () => import('../views/WebAdmin.vue')
+const WebAdminTemplateReviewDetail = () => import('../views/WebAdminTemplateReviewDetail.vue')
 const LoginOnly = () => import('../views/LoginOnly.vue')
 
 export const navItems = [
@@ -103,6 +104,16 @@ const routes = [
     path: '/me/webadmin',
     name: 'me-webadmin',
     component: WebAdmin,
+    meta: {
+      requiresAuth: true,
+      navPath: '/me',
+    },
+  },
+  {
+    path: '/me/webadmin/review/:communityId',
+    alias: ['/me/webadmin/review/:communityId/'],
+    name: 'me-webadmin-review',
+    component: WebAdminTemplateReviewDetail,
     meta: {
       requiresAuth: true,
       navPath: '/me',

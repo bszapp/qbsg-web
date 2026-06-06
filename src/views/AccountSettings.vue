@@ -29,7 +29,7 @@
           <div class="section-header">
             <div>
               <h2 class="section-title">修改密码</h2>
-              <p class="section-desc">提交当前密码与新密码后生效，需要完成人机验证。</p>
+              <p class="section-desc">提交当前密码与新密码后生效。</p>
             </div>
           </div>
           <div class="button-row settings-actions">
@@ -136,9 +136,6 @@
                     </div>
                   </div>
 
-                  <CaptchaWidget ref="changePasswordCaptchaRef" v-model="changePasswordCaptchaToken"
-                    @error="handleCaptchaError" />
-
                   <button type="submit" class="btn btn-primary btn-block" :disabled="changingPassword">
                     <span>{{ changingPassword ? '提交中...' : '确认修改密码' }}</span>
                     <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -229,8 +226,6 @@
                     </label>
                   </div>
 
-                  <CaptchaWidget ref="deleteCaptchaRef" v-model="deleteCaptchaToken" @error="handleCaptchaError" />
-
                   <button type="submit" class="btn btn-danger btn-block"
                     :disabled="deletingAccount || !deleteForm.confirmed">
                     <span>{{ deletingAccount ? '注销中...' : '确认注销账号' }}</span>
@@ -253,7 +248,6 @@
 <script setup>
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import CaptchaWidget from '../components/CaptchaWidget.vue'
 import { useToast } from '../composables/useToast.js'
 import { useAuth } from '../composables/useAuth.js'
 
@@ -278,11 +272,6 @@ const showCurrentPassword = ref(false)
 const showNewPassword = ref(false)
 const showDeletePassword = ref(false)
 
-const changePasswordCaptchaRef = ref(null)
-const deleteCaptchaRef = ref(null)
-const changePasswordCaptchaToken = ref('')
-const deleteCaptchaToken = ref('')
-
 const changePasswordForm = reactive({
   password: '',
   newPassword: '',
@@ -295,10 +284,6 @@ const deleteForm = reactive({
   confirmed: false,
 })
 
-function handleCaptchaError() {
-  showToast('验证组件加载失败，请刷新页面重试', 'error', 3200)
-}
-
 async function refreshInfo() {
   refreshingInfo.value = true
   await refreshProfile({ silent: false, showAuthToast: true })
@@ -308,8 +293,6 @@ async function refreshInfo() {
 function resetChangePasswordForm() {
   changePasswordForm.password = ''
   changePasswordForm.newPassword = ''
-  changePasswordCaptchaToken.value = ''
-  changePasswordCaptchaRef.value?.reset()
   showCurrentPassword.value = false
   showNewPassword.value = false
 }
@@ -319,8 +302,6 @@ function resetDeleteForm() {
   deleteForm.password = ''
   deleteForm.points = ''
   deleteForm.confirmed = false
-  deleteCaptchaToken.value = ''
-  deleteCaptchaRef.value?.reset()
   showDeletePassword.value = false
 }
 
@@ -347,24 +328,15 @@ async function submitChangePassword() {
     return
   }
 
-  if (!changePasswordCaptchaToken.value) {
-    showToast('请先完成人机验证', 'warning', 2800)
-    return
-  }
-
   changingPassword.value = true
   const ok = await changePassword({
     password: changePasswordForm.password,
     newPassword: changePasswordForm.newPassword,
-    cf_token: changePasswordCaptchaToken.value,
   })
   changingPassword.value = false
 
   if (ok) {
     closeChangePasswordModal()
-  } else {
-    changePasswordCaptchaRef.value?.reset()
-    changePasswordCaptchaToken.value = ''
   }
 }
 
@@ -391,17 +363,11 @@ async function submitDeleteAccount() {
     return
   }
 
-  if (!deleteCaptchaToken.value) {
-    showToast('请先完成人机验证', 'warning', 2800)
-    return
-  }
-
   deletingAccount.value = true
   const ok = await deleteAccount({
     username: deleteForm.username.trim(),
     password: deleteForm.password,
     points: deleteForm.points,
-    cf_token: deleteCaptchaToken.value,
   })
   deletingAccount.value = false
 
@@ -409,9 +375,6 @@ async function submitDeleteAccount() {
     closeDeleteModal()
     await router.replace('/')
     await logout({ silent: true })
-  } else {
-    deleteCaptchaRef.value?.reset()
-    deleteCaptchaToken.value = ''
   }
 }
 </script>

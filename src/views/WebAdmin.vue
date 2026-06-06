@@ -363,6 +363,11 @@
                     </div>
                 </template>
 
+                <!-- ── 社区审核 ── -->
+                <template v-if="mainTab === 'review'">
+                    <WebAdminTemplateReviewPanel :token="token" />
+                </template>
+
             </template><!-- end v-else isAdmin -->
         </div><!-- end page-stack -->
     </div><!-- end page-shell -->
@@ -375,6 +380,7 @@
 <script setup>
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
+import WebAdminTemplateReviewPanel from '../components/WebAdminTemplateReviewPanel.vue'
 
 const { state } = useAuth()
 const token = computed(() => state.token)
@@ -389,6 +395,7 @@ const categories = [
     { k: 'billing', label: '结算管理' },
     { k: 'users', label: '用户管理' },
     { k: 'providers', label: '提供商管理' },
+    { k: 'review', label: '社区审核' },
 ]
 
 function switchMain(k) {
@@ -396,6 +403,7 @@ function switchMain(k) {
     if (k === 'billing') { ensureProviders(); switchBilling(billingTab.value) }
     else if (k === 'users') switchUsers(usersTab.value)
     else if (k === 'providers') loadProviders()
+    else if (k === 'review') return
 }
 
 function switchBilling(sub) {

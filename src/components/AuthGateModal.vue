@@ -134,6 +134,7 @@ function handleRegister(payload) {
 .auth-popup-content {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
   background: linear-gradient(to bottom, rgba(var(--theme-color-rgb), 0.02), transparent);
 }
 

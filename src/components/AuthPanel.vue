@@ -70,8 +70,6 @@
         </button>
       </div>
 
-      <CaptchaWidget ref="loginCaptchaRef" v-model="loginCaptchaToken" @error="handleCaptchaError" />
-
       <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
         <span>{{ submitting ? '登录中...' : '登录' }}</span>
         <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -159,8 +157,6 @@
         </div>
       </div>
 
-      <CaptchaWidget ref="registerCaptchaRef" v-model="registerCaptchaToken" @error="handleCaptchaError" />
-
       <button type="submit" class="btn btn-primary btn-block" :disabled="submitting">
         <span>{{ submitting ? '注册中...' : '创建账户' }}</span>
         <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -185,7 +181,6 @@
 
 <script setup>
 import { reactive, ref, onMounted } from 'vue'
-import CaptchaWidget from './CaptchaWidget.vue'
 import { useToast } from '../composables/useToast.js'
 
 const props = defineProps({
@@ -219,10 +214,6 @@ const showLoginPassword = ref(false)
 const showRegisterPassword = ref(false)
 const showRegisterConfirmPassword = ref(false)
 const submitting = ref(false)
-const loginCaptchaRef = ref(null)
-const registerCaptchaRef = ref(null)
-const loginCaptchaToken = ref('')
-const registerCaptchaToken = ref('')
 
 const loginForm = reactive({
   username: '',
@@ -264,10 +255,6 @@ function showForgotPasswordToast() {
   showToast('请联系管理员凭历史交易记录找回', 'info', 3000)
 }
 
-function handleCaptchaError() {
-  showToast('验证组件加载失败，请刷新页面重试', 'error', 3200)
-}
-
 function ensureLoginForm() {
   if (!loginForm.username.trim()) {
     showToast('请输入用户名', 'warning', 2800)
@@ -276,11 +263,6 @@ function ensureLoginForm() {
 
   if (!loginForm.password) {
     showToast('请输入密码', 'warning', 2800)
-    return false
-  }
-
-  if (!loginCaptchaToken.value) {
-    showToast('请先完成人机验证', 'warning', 2800)
     return false
   }
 
@@ -305,11 +287,6 @@ function ensureRegisterForm() {
 
   if (registerForm.password !== registerForm.confirmPassword) {
     showToast('两次输入的密码不一致', 'warning', 2800)
-    return false
-  }
-
-  if (!registerCaptchaToken.value) {
-    showToast('请先完成人机验证', 'warning', 2800)
     return false
   }
 
@@ -347,7 +324,6 @@ async function submitLogin() {
     const ok = await props.loginAction({
       username: loginForm.username.trim(),
       password: loginForm.password,
-      cf_token: loginCaptchaToken.value,
     })
 
     if (ok) {
@@ -357,8 +333,6 @@ async function submitLogin() {
   } catch (error) {
     showToast(error.message || '登录失败，请稍后重试', 'error', 3400)
   } finally {
-    loginCaptchaRef.value?.reset()
-    loginCaptchaToken.value = ''
     submitting.value = false
   }
 }
@@ -374,7 +348,6 @@ async function submitRegister() {
     const ok = await props.registerAction({
       username: registerForm.username.trim(),
       password: registerForm.password,
-      cf_token: registerCaptchaToken.value,
     })
 
     if (ok) {
@@ -383,8 +356,6 @@ async function submitRegister() {
   } catch (error) {
     showToast(error.message || '注册失败，请稍后重试', 'error', 3400)
   } finally {
-    registerCaptchaRef.value?.reset()
-    registerCaptchaToken.value = ''
     submitting.value = false
   }
 }
@@ -393,8 +364,7 @@ async function submitRegister() {
 <style scoped>
 .auth-panel {
   padding: 20px;
-  overflow-y: auto;
-  flex: 1;
+  box-sizing: border-box;
 }
 
 .auth-header {
