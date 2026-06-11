@@ -106,12 +106,49 @@
                         </div>
                     </div>
                     <div v-if="loadingScript" class="state-text">加载中…</div>
-                    <textarea v-else v-model="scriptContent" class="code-editor" rows="24"
-                        spellcheck="false"></textarea>
-                    <div class="button-row">
-                        <button class="primary-button" @click="saveScript" :disabled="savingScript">
-                            {{ savingScript ? '保存中…' : '保存脚本' }}
-                        </button>
+                    <div v-else>
+                        <div class="script-editor-shell">
+                            <Codemirror v-model="scriptContent" placeholder="在这里编写 Node.js ESM 激活脚本"
+                                :style="scriptEditorStyle" :autofocus="true" :indent-with-tab="true" :tab-size="2"
+                                :extensions="scriptEditorExtensions" />
+                        </div>
+                        <div class="button-row script-actions">
+                            <button class="secondary-button" @click="formatScript"
+                                :disabled="formattingScript || savingScript">
+                                {{ formattingScript ? '美化中…' : '美化代码' }}
+                            </button>
+                            <button class="primary-button" @click="saveScript" :disabled="savingScript">
+                                {{ savingScript ? '保存中…' : '保存脚本' }}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="script-doc-panel">
+                        <div class="section-header script-doc-header">
+                            <div>
+                                <h3 class="script-doc-title">说明文档</h3>
+                                <p class="section-desc">读取网站 <code class="inline-code">/provider.md</code> 内容。</p>
+                            </div>
+                            <div class="doc-toolbar">
+                                <div class="mode-toggle">
+                                    <button :class="['mode-toggle-btn', { active: providerDocMode === 'preview' }]"
+                                        @click="providerDocMode = 'preview'">浏览</button>
+                                    <button :class="['mode-toggle-btn', { active: providerDocMode === 'code' }]"
+                                        @click="providerDocMode = 'code'">代码模式</button>
+                                </div>
+                                <button class="secondary-button small-btn" @click="copyProviderMarkdown"
+                                    :disabled="!providerDocContent || loadingProviderDoc">
+                                    复制为 Markdown
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="loadingProviderDoc" class="state-text">文档加载中…</div>
+                        <div v-else-if="providerDocError" class="state-text error">{{ providerDocError }}</div>
+                        <MdPreview v-else-if="providerDocMode === 'preview'" editor-id="provider-doc-preview"
+                            :model-value="providerDocContent" preview-theme="github" class="provider-doc-preview" />
+                        <MdEditor v-else v-model="providerDocContent" editor-id="provider-doc-editor"
+                            preview-theme="github" code-theme="atom" language="zh-CN" :preview="false"
+                            :toolbars="markdownToolbars" :no-upload-img="true" class="provider-doc-editor" />
                     </div>
                 </section>
             </div>
@@ -253,9 +290,17 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { Codemirror } from 'vue-codemirror'
+import { javascript } from '@codemirror/lang-javascript'
+import { oneDark } from '@codemirror/theme-one-dark'
+import { MdEditor, MdPreview } from 'md-editor-v3'
+import * as prettier from 'prettier/standalone'
+import * as babelParser from 'prettier/plugins/babel'
+import * as estreePlugin from 'prettier/plugins/estree'
 import { useAuth } from '../composables/useAuth.js'
 import { useToast } from '../composables/useToast.js'
-import { buildApiUrl } from '../config/app.js'
+import { APP_BASE_PATH, buildApiUrl } from '../config/app.js'
+import 'md-editor-v3/lib/style.css'
 
 const router = useRouter()
 const route = useRoute()
@@ -317,7 +362,10 @@ const activeTab = ref('catalog')
 
 async function switchTab(key) {
     activeTab.value = key
-    if (key === 'script' && scriptContent.value === null) await loadScript()
+    if (key === 'script') {
+        if (scriptContent.value === null) await loadScript()
+        if (!providerDocLoaded.value && !loadingProviderDoc.value) await loadProviderDoc()
+    }
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
@@ -629,6 +677,31 @@ function resolveDisplayUrl(url) {
 const scriptContent = ref(null)
 const loadingScript = ref(false)
 const savingScript = ref(false)
+const formattingScript = ref(false)
+const scriptEditorExtensions = [javascript(), oneDark]
+const scriptEditorStyle = { height: '520px' }
+const providerDocContent = ref('')
+const providerDocMode = ref('preview')
+const loadingProviderDoc = ref(false)
+const providerDocLoaded = ref(false)
+const providerDocError = ref('')
+const markdownToolbars = [
+    'bold',
+    'underline',
+    'italic',
+    'strikeThrough',
+    'title',
+    'quote',
+    'unorderedList',
+    'orderedList',
+    'codeRow',
+    'code',
+    'link',
+    'table',
+    'revoke',
+    'next',
+    'prettier',
+]
 
 async function loadScript() {
     if (!selectedUuid.value) return
@@ -659,6 +732,72 @@ async function saveScript() {
     } finally {
         savingScript.value = false
     }
+}
+
+async function formatScript() {
+    formattingScript.value = true
+    try {
+        scriptContent.value = await prettier.format(scriptContent.value || '', {
+            parser: 'babel',
+            plugins: [babelParser, estreePlugin],
+            printWidth: 100,
+        })
+        showToast('代码已美化', 'success', 2000)
+    } catch (e) {
+        showToast(e.message ? `格式化失败：${e.message}` : '格式化失败', 'error', 3000)
+    } finally {
+        formattingScript.value = false
+    }
+}
+
+function buildPublicAssetUrl(path) {
+    const base = APP_BASE_PATH.endsWith('/') ? APP_BASE_PATH.slice(0, -1) : APP_BASE_PATH
+    const nextPath = path.startsWith('/') ? path : `/${path}`
+    return `${base}${nextPath}` || nextPath
+}
+
+async function loadProviderDoc() {
+    loadingProviderDoc.value = true
+    providerDocError.value = ''
+    try {
+        const res = await fetch(buildPublicAssetUrl('/provider.md'), { cache: 'no-cache' })
+        if (!res.ok) throw new Error(`说明文档加载失败（${res.status}）`)
+        providerDocContent.value = await res.text()
+        providerDocLoaded.value = true
+    } catch (e) {
+        providerDocError.value = e.message || '说明文档加载失败'
+        showToast(providerDocError.value, 'error', 3000)
+    } finally {
+        loadingProviderDoc.value = false
+    }
+}
+
+async function copyProviderMarkdown() {
+    if (!providerDocContent.value) return
+    try {
+        if (navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(providerDocContent.value)
+        } else {
+            copyTextByTextarea(providerDocContent.value)
+        }
+        showToast('Markdown 已复制', 'success', 2000)
+    } catch (e) {
+        showToast(e.message || '复制失败', 'error', 3000)
+    }
+}
+
+function copyTextByTextarea(text) {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', '')
+    textarea.style.position = 'fixed'
+    textarea.style.top = '-9999px'
+    textarea.style.left = '-9999px'
+    document.body.appendChild(textarea)
+    textarea.select()
+    const copied = document.execCommand('copy')
+    document.body.removeChild(textarea)
+    if (!copied) throw new Error('复制失败')
 }
 
 // ── 初始化 ────────────────────────────────────────────────────────────────────
@@ -1086,26 +1225,111 @@ onMounted(async () => {
 }
 
 /* ── 代码编辑器 ── */
-.code-editor {
-    width: 100%;
-    box-sizing: border-box;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.65;
-    padding: 14px;
+.script-editor-shell {
+    margin-top: 12px;
     border-radius: 12px;
     border: 1px solid rgba(var(--text-color-rgb), 0.12);
-    background: rgba(var(--text-color-rgb), 0.03);
-    color: var(--text-color);
-    resize: vertical;
-    outline: none;
-    transition: border-color 0.2s;
-    display: block;
+    overflow: hidden;
+    background: #282c34;
+}
+
+.script-editor-shell:focus-within {
+    border-color: rgba(var(--theme-color-rgb), 0.45);
+}
+
+.script-editor-shell :deep(.cm-editor) {
+    min-height: 520px;
+    font-size: 13px;
+}
+
+.script-editor-shell :deep(.cm-scroller) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    line-height: 1.65;
+}
+
+.script-editor-shell :deep(.cm-content) {
+    min-height: 520px;
+}
+
+.script-actions {
+    justify-content: flex-end;
     margin-top: 12px;
 }
 
-.code-editor:focus {
-    border-color: rgba(var(--theme-color-rgb), 0.45);
+.script-doc-panel {
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(var(--text-color-rgb), 0.08);
+}
+
+.script-doc-header {
+    align-items: flex-start;
+}
+
+.script-doc-title {
+    margin: 0;
+    font-size: 16px;
+    color: var(--text-color);
+}
+
+.doc-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.mode-toggle {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.1);
+    border-radius: 10px;
+    background: rgba(var(--text-color-rgb), 0.04);
+}
+
+.mode-toggle-btn {
+    min-height: 30px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: var(--secondary-text-color);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.mode-toggle-btn.active {
+    background: var(--theme-color);
+    color: #fff;
+}
+
+.provider-doc-preview,
+.provider-doc-editor {
+    border-radius: 12px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.1);
+    overflow: hidden;
+}
+
+.provider-doc-preview {
+    padding: 16px 18px;
+    background: rgba(var(--text-color-rgb), 0.02);
+}
+
+.provider-doc-preview :deep(.md-editor-preview) {
+    padding: 0;
+    color: var(--text-color);
+    background: transparent;
+}
+
+.provider-doc-editor {
+    height: 520px;
+}
+
+.state-text.error {
+    color: #ef4444;
 }
 
 .inline-code {
