@@ -19,6 +19,11 @@ export function setAdminTemplateStatus(token, payload) {
   })
 }
 
+function isSupportedTemplateMediaType(contentType) {
+  const mediaType = contentType.split(';', 1)[0].trim().toLowerCase()
+  return mediaType === 'image/png' || mediaType === 'image/webp'
+}
+
 export async function fetchAdminTemplateMediaObjectUrl(token, { uid, project_id, kind }) {
   const response = await fetch(buildApiUrl('/api/admin/templates/media'), {
     method: 'POST',
@@ -34,7 +39,7 @@ export async function fetchAdminTemplateMediaObjectUrl(token, { uid, project_id,
   })
 
   const contentType = response.headers.get('content-type') || ''
-  if (response.ok && contentType.includes('image/png')) {
+  if (response.ok && isSupportedTemplateMediaType(contentType)) {
     const blob = await response.blob()
     return {
       ok: true,
