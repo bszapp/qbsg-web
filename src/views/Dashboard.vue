@@ -35,22 +35,27 @@
               </div>
             </div>
 
-            <a :href="updateInfo?.downloadUrl || '#'" :class="['dl-btn-android', { 'dl-btn--disabled': !updateInfo }]"
-              target="_blank" download>
-              <i class="fa-brands fa-android"></i>
+            <a :href="primaryDownload?.url || '#'"
+              :class="['dl-btn-primary', { 'dl-btn--disabled': !primaryDownload }]" target="_blank" download>
+              <i :class="primaryDownload?.icon || 'fa-solid fa-download'"></i>
               <span class="dl-btn-text">
-                <span class="dl-btn-main">Android 版下载</span>
-                <span class="dl-btn-sub">{{ updateInfo ? updateInfo.latestVersionName : '...' }} · APK</span>
+                <span class="dl-btn-main">{{ primaryDownload ? `${primaryDownload.label} 版下载` : '客户端下载' }}</span>
+                <span class="dl-btn-sub">
+                  {{ updateInfo ? updateInfo.latestVersionName : '...' }}
+                  <template v-if="primaryDownload"> · {{ primaryDownload.extension }}</template>
+                </span>
               </span>
               <i class="fa-solid fa-arrow-down dl-btn-arrow"></i>
             </a>
 
             <div class="other-platforms">
-              <button class="platform-btn platform-btn--ios" disabled>
-                <i class="fa-brands fa-windows"></i>
-                <span>Windows 版<br><small>即将发布</small></span>
-              </button>
-              <button class="platform-btn platform-btn--harmony" disabled>
+              <a v-for="download in secondaryDownloads" :key="download.key" :href="download.url"
+                class="platform-btn" target="_blank" download>
+                <i :class="download.icon"></i>
+                <span>{{ download.label }} 版<br><small>{{ updateInfo.latestVersionName }} · {{ download.extension
+                    }}</small></span>
+              </a>
+              <button class="platform-btn platform-btn--disabled" disabled>
                 <i class="fa-solid fa-circle-nodes"></i>
                 <span>鸿蒙版<br><small>敬请期待</small></span>
               </button>
@@ -131,10 +136,59 @@
 import { ref, computed, onMounted } from 'vue'
 import VersionLogModal from '../components/VersionLogModal.vue'
 import { getJson } from '../services/api.js'
+import { buildApiUrl } from '../config/app.js'
 
 const showVersionLog = ref(false)
 const loadingUpdate = ref(false)
 const updateInfo = ref(null)
+
+const downloadPlatforms = [
+  { key: 'android', label: 'Android', extension: 'APK', icon: 'fa-brands fa-android' },
+  { key: 'windows', label: 'Windows', extension: 'EXE', icon: 'fa-brands fa-windows' },
+]
+
+function detectBrowserPlatform() {
+  if (typeof navigator === 'undefined') return null
+
+  const platformText = [
+    navigator.userAgentData?.platform,
+    navigator.platform,
+    navigator.userAgent,
+  ].filter(Boolean).join(' ')
+
+  if (/android/i.test(platformText)) return 'android'
+  if (/windows|win32|win64/i.test(platformText)) return 'windows'
+  return null
+}
+
+function resolveDownloadUrl(url) {
+  if (/^https?:\/\//i.test(url)) return url
+  return buildApiUrl(url)
+}
+
+const browserPlatform = detectBrowserPlatform()
+
+const availableDownloads = computed(() => {
+  const urls = updateInfo.value?.downloadUrl
+  if (!urls || typeof urls !== 'object') return []
+
+  return downloadPlatforms
+    .filter(platform => typeof urls[platform.key] === 'string' && urls[platform.key])
+    .map(platform => ({
+      ...platform,
+      url: resolveDownloadUrl(urls[platform.key]),
+    }))
+})
+
+const primaryDownload = computed(() =>
+  availableDownloads.value.find(download => download.key === browserPlatform)
+  || availableDownloads.value[0]
+  || null
+)
+
+const secondaryDownloads = computed(() =>
+  availableDownloads.value.filter(download => download.key !== primaryDownload.value?.key)
+)
 
 const products = [
   { id: 1, name: '爆款商品 1', url: 'https://mobile.yangkeduo.com/goods2.html?ps=IrM6lMpnNN' },
@@ -296,8 +350,8 @@ onMounted(() => {
   color: var(--secondary-text-color);
 }
 
-/* Android Download Button */
-.dl-btn-android {
+/* Primary Download Button */
+.dl-btn-primary {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -310,13 +364,14 @@ onMounted(() => {
   box-shadow: 0 4px 14px rgba(var(--theme-color-rgb), 0.35);
 }
 
-.dl-btn-android:hover {
+.dl-btn-primary:hover {
   opacity: 0.92;
   box-shadow: 0 6px 20px rgba(var(--theme-color-rgb), 0.45);
   transform: translateY(-1px);
 }
 
-.dl-btn-android>.fa-brands {
+.dl-btn-primary>.fa-brands,
+.dl-btn-primary>.fa-solid {
   font-size: 26px;
   flex-shrink: 0;
 }
@@ -367,9 +422,27 @@ onMounted(() => {
   background: rgba(var(--text-color-rgb), 0.03);
   color: var(--secondary-text-color);
   font-size: 13px;
-  cursor: not-allowed;
+  cursor: pointer;
   text-align: left;
+  text-decoration: none;
   transition: all 0.2s;
+}
+
+.platform-btn:hover {
+  border-color: rgba(var(--theme-color-rgb), 0.35);
+  color: var(--theme-color);
+  background: rgba(var(--theme-color-rgb), 0.05);
+}
+
+.platform-btn--disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.platform-btn--disabled:hover {
+  border-color: var(--border-color);
+  color: var(--secondary-text-color);
+  background: rgba(var(--text-color-rgb), 0.03);
 }
 
 .platform-btn i {

@@ -130,12 +130,6 @@
                                 <p class="section-desc">读取网站 <code class="inline-code">/provider.md</code> 内容。</p>
                             </div>
                             <div class="doc-toolbar">
-                                <div class="mode-toggle">
-                                    <button :class="['mode-toggle-btn', { active: providerDocMode === 'preview' }]"
-                                        @click="providerDocMode = 'preview'">浏览</button>
-                                    <button :class="['mode-toggle-btn', { active: providerDocMode === 'code' }]"
-                                        @click="providerDocMode = 'code'">代码模式</button>
-                                </div>
                                 <button class="secondary-button small-btn" @click="copyProviderMarkdown"
                                     :disabled="!providerDocContent || loadingProviderDoc">
                                     复制为 Markdown
@@ -144,11 +138,8 @@
                         </div>
                         <div v-if="loadingProviderDoc" class="state-text">文档加载中…</div>
                         <div v-else-if="providerDocError" class="state-text error">{{ providerDocError }}</div>
-                        <MdPreview v-else-if="providerDocMode === 'preview'" editor-id="provider-doc-preview"
-                            :model-value="providerDocContent" preview-theme="github" class="provider-doc-preview" />
-                        <MdEditor v-else v-model="providerDocContent" editor-id="provider-doc-editor"
-                            preview-theme="github" code-theme="atom" language="zh-CN" :preview="false"
-                            :toolbars="markdownToolbars" :no-upload-img="true" class="provider-doc-editor" />
+                        <MdPreview v-else editor-id="provider-doc-preview" :model-value="providerDocContent"
+                            preview-theme="github" class="provider-doc-preview" />
                     </div>
                 </section>
             </div>
@@ -293,7 +284,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { Codemirror } from 'vue-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
 import { oneDark } from '@codemirror/theme-one-dark'
-import { MdEditor, MdPreview } from 'md-editor-v3'
+import { MdPreview } from 'md-editor-v3'
 import * as prettier from 'prettier/standalone'
 import * as babelParser from 'prettier/plugins/babel'
 import * as estreePlugin from 'prettier/plugins/estree'
@@ -681,27 +672,9 @@ const formattingScript = ref(false)
 const scriptEditorExtensions = [javascript(), oneDark]
 const scriptEditorStyle = { height: '520px' }
 const providerDocContent = ref('')
-const providerDocMode = ref('preview')
 const loadingProviderDoc = ref(false)
 const providerDocLoaded = ref(false)
 const providerDocError = ref('')
-const markdownToolbars = [
-    'bold',
-    'underline',
-    'italic',
-    'strikeThrough',
-    'title',
-    'quote',
-    'unorderedList',
-    'orderedList',
-    'codeRow',
-    'code',
-    'link',
-    'table',
-    'revoke',
-    'next',
-    'prettier',
-]
 
 async function loadScript() {
     if (!selectedUuid.value) return
@@ -1276,45 +1249,13 @@ onMounted(async () => {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-}
-
-.mode-toggle {
-    display: inline-flex;
-    padding: 3px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.1);
-    border-radius: 10px;
-    background: rgba(var(--text-color-rgb), 0.04);
-}
-
-.mode-toggle-btn {
-    min-height: 30px;
-    padding: 0 12px;
-    border: 0;
-    border-radius: 7px;
-    background: transparent;
-    color: var(--secondary-text-color);
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.mode-toggle-btn.active {
-    background: var(--theme-color);
-    color: #fff;
-}
-
-.provider-doc-preview,
-.provider-doc-editor {
-    border-radius: 12px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.1);
-    overflow: hidden;
 }
 
 .provider-doc-preview {
     padding: 16px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(var(--text-color-rgb), 0.1);
+    overflow: hidden;
     background: rgba(var(--text-color-rgb), 0.02);
 }
 
@@ -1322,10 +1263,6 @@ onMounted(async () => {
     padding: 0;
     color: var(--text-color);
     background: transparent;
-}
-
-.provider-doc-editor {
-    height: 520px;
 }
 
 .state-text.error {
