@@ -13,26 +13,35 @@
         </div>
 
         <!-- 主界面 -->
-        <div v-else-if="selectedUuid" class="page-stack">
+        <div v-else-if="selectedUuid" class="page-stack provider-admin-stack">
             <nav class="admin-path" aria-label="当前位置">
                 <RouterLink to="/me">我的</RouterLink><span>/</span>
-                <strong>提供商管理</strong><span>/</span>
+                <span>提供商管理</span><span>/</span>
                 <strong>{{ selectedProviderName }}</strong><span>/</span>
                 <strong>{{ tabs.find(tab => tab.key === activeTab)?.label }}</strong>
             </nav>
-            <section class="hero-card">
-                <span class="page-eyebrow">管理后台</span>
-                <div class="page-title-row">
+            <section class="hero-card provider-header">
+                <div>
+                    <span class="page-eyebrow">提供商管理</span>
                     <h1 class="page-title">{{ selectedProviderName }}</h1>
+                    <p class="page-subtitle">管理当前提供商的固件目录与激活脚本</p>
                 </div>
+                <label v-if="myProviders.length > 1" class="provider-picker">
+                    <span>切换提供商</span>
+                    <select :value="selectedUuid" @change="switchProvider($event.target.value)" aria-label="切换提供商">
+                        <option v-for="provider in myProviders" :key="provider.uuid" :value="provider.uuid">{{ provider.name }}</option>
+                    </select>
+                </label>
             </section>
 
-            <div class="tab-bar" aria-label="提供商管理页面">
-                <button v-for="tab in tabs" :key="tab.key" :class="['tab-btn', { active: activeTab === tab.key }]"
-                    :aria-current="activeTab === tab.key ? 'page' : undefined" @click="switchTab(tab.key)">
+            <nav class="provider-nav" aria-label="提供商管理页面">
+                <RouterLink v-for="tab in tabs" :key="tab.key"
+                    :to="{ path: '/me/provideradmin', query: { id: selectedUuid, tab: tab.key } }"
+                    :class="['provider-nav-link', { active: activeTab === tab.key }]"
+                    :aria-current="activeTab === tab.key ? 'page' : undefined">
                     {{ tab.label }}
-                </button>
-            </div>
+                </RouterLink>
+            </nav>
 
             <!-- ── 固件目录 ── -->
             <div v-if="activeTab === 'catalog'">
@@ -331,11 +340,6 @@ async function loadMyProviders() {
     }
 }
 
-async function selectProvider(uuid) {
-    selectedUuid.value = uuid
-    await loadCatalog()
-}
-
 async function resetAndSelectProvider(uuid, tab = 'catalog') {
     groups.value = []
     scriptContent.value = null
@@ -372,8 +376,9 @@ async function applyTab(key) {
     }
 }
 
-function switchTab(key) {
-    router.push({ path: '/me/provideradmin', query: { id: selectedUuid.value, tab: key } })
+function switchProvider(uuid) {
+    if (uuid === selectedUuid.value) return
+    router.push({ path: '/me/provideradmin', query: { id: uuid, tab: activeTab.value } })
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
@@ -805,6 +810,8 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.provider-admin-stack { width: min(1120px, 100%); }
+
 .admin-path {
     display: flex;
     align-items: center;
@@ -815,7 +822,31 @@ onMounted(async () => {
 }
 
 .admin-path a { color: var(--theme-color); text-decoration: none; }
+.admin-path a:hover { text-decoration: underline; }
 .admin-path strong { color: var(--text-color); font-weight: 600; }
+
+.provider-header {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+}
+
+.provider-header .page-title { margin-top: 12px; }
+
+.provider-picker { display: flex; flex-direction: column; gap: 7px; min-width: 210px; }
+.provider-picker span { color: var(--secondary-text-color); font-size: 12px; font-weight: 600; }
+.provider-picker select {
+    min-height: 42px;
+    padding: 0 36px 0 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: rgba(var(--card-background-rgb), .9);
+    color: var(--text-color);
+    font: inherit;
+    cursor: pointer;
+}
+.provider-picker select:focus-visible { outline: 2px solid var(--theme-color); outline-offset: 2px; }
 
 .admin-loading {
     display: flex;
@@ -871,76 +902,38 @@ onMounted(async () => {
     line-height: 1.7;
 }
 
-/* ── 提供商选择 ── */
-.provider-selector {
+/* ── 页面导航 ── */
+.provider-nav {
     display: flex;
-    flex-direction: column;
-    gap: 12px;
-    max-width: 480px;
-}
-
-.provider-btn {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 18px 22px;
-    border-radius: 16px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.1);
-    background: rgba(var(--card-background-rgb), 0.7);
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: var(--text-color);
-}
-
-.provider-btn:hover {
-    border-color: var(--theme-color);
-    background: rgba(var(--theme-color-rgb), 0.06);
-}
-
-.provider-btn-name {
-    font-size: 16px;
-    font-weight: 700;
-}
-
-.provider-btn-arrow {
-    color: var(--secondary-text-color);
-    font-size: 18px;
-}
-
-/* ── 标签页 ── */
-.tab-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-    padding: 6px;
+    gap: 6px;
+    padding: 5px;
     border: 1px solid var(--border-color);
-    border-radius: 16px;
-    background: rgba(var(--card-background-rgb), 0.55);
+    border-radius: 13px;
+    background: rgba(var(--card-background-rgb), .7);
 }
 
-.tab-btn {
-    padding: 8px 22px;
-    border-radius: 999px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.12);
-    background: transparent;
+.provider-nav-link {
+    min-width: 130px;
+    padding: 11px 18px;
+    border-radius: 9px;
     color: var(--secondary-text-color);
     font-size: 14px;
     font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    text-align: center;
+    text-decoration: none;
+    transition: background .18s ease, color .18s ease;
 }
 
-.tab-btn.active {
-    background: var(--theme-color);
-    color: #fff;
-    border-color: var(--theme-color);
-    box-shadow: 0 4px 12px rgba(var(--theme-color-rgb), 0.2);
-}
-
-.tab-btn:hover:not(.active) {
-    border-color: var(--theme-color);
+.provider-nav-link.active {
+    background: rgba(var(--theme-color-rgb), .13);
     color: var(--theme-color);
+    font-weight: 700;
+}
+
+.provider-nav-link:hover, .provider-nav-link:focus-visible {
+    background: rgba(var(--theme-color-rgb), .09);
+    color: var(--theme-color);
+    outline: none;
 }
 
 /* ── 通用 ── */
@@ -1476,6 +1469,9 @@ onMounted(async () => {
 
 /* ── 响应式 ── */
 @media (max-width: 600px) {
+    .provider-header { align-items: stretch; flex-direction: column; }
+    .provider-picker { min-width: 0; }
+    .provider-nav-link { flex: 1; min-width: 0; }
     .field-grid {
         grid-template-columns: 1fr;
     }

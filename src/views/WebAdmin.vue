@@ -1,7 +1,7 @@
 <template>
     <div class="webadmin-root">
         <div class="page-shell">
-        <div class="page-stack">
+        <div class="page-stack admin-page-stack">
 
             <!-- 无权限 -->
             <div v-if="!isAdmin" class="no-permission-card">
@@ -12,32 +12,35 @@
             </div>
 
             <template v-else>
-                <nav class="admin-path" aria-label="当前位置">
-                    <RouterLink to="/me">我的</RouterLink><span>/</span>
-                    <strong>网站管理</strong><span>/</span>
-                    <strong>{{ currentCategoryLabel }}</strong>
-                    <template v-if="currentSubLabel"><span>/</span><strong>{{ currentSubLabel }}</strong></template>
+                <div class="admin-workspace">
+                <nav class="admin-sidebar" aria-label="网站管理页面">
+                    <div class="admin-nav-brand">
+                        <span class="admin-nav-mark">管</span>
+                        <span><strong>网站管理</strong><small>管理后台</small></span>
+                    </div>
+                    <div v-for="(group, index) in navigationGroups" :key="group.label" class="admin-nav-group">
+                        <div class="admin-nav-heading"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ group.label }}</div>
+                        <RouterLink v-for="item in group.items" :key="item.label" :to="adminTo(item)"
+                            :class="['admin-nav-link', { active: isActiveNav(item) }]"
+                            :aria-current="isActiveNav(item) ? 'page' : undefined">
+                            <span>{{ item.label }}</span><span class="admin-nav-arrow" aria-hidden="true">›</span>
+                        </RouterLink>
+                    </div>
                 </nav>
-                <!-- 主分类 Tab -->
-                <div class="tab-bar" aria-label="网站管理分类">
-                    <button v-for="cat in categories" :key="cat.k" :class="['tab-btn', { active: mainTab === cat.k }]"
-                        :aria-current="mainTab === cat.k ? 'page' : undefined" @click="switchMain(cat.k)">
-                        {{ cat.label }}
-                    </button>
-                </div>
+                <main class="admin-content">
+                <header class="admin-content-header">
+                    <nav class="admin-path" aria-label="当前位置">
+                        <RouterLink to="/me">我的</RouterLink><span>/</span>
+                        <span>网站管理</span><span>/</span><strong>{{ currentPageLabel }}</strong>
+                    </nav>
+                    <h1>{{ currentPageLabel }}</h1>
+                </header>
                 <div v-if="loadingCount" class="admin-loading" role="status" aria-live="polite">
-                    <span class="admin-loading-spinner" />正在加载{{ currentCategoryLabel }}数据…
+                    <span class="admin-loading-spinner" />正在加载{{ currentPageLabel }}数据…
                 </div>
 
                 <!-- ── 结算管理 ── -->
                 <template v-if="mainTab === 'billing'">
-                    <div class="sub-bar">
-                        <button :class="['sub-btn', { active: billingTab === 'history' }]"
-                            @click="switchBilling('history')">结算列表</button>
-                        <button :class="['sub-btn', { active: billingTab === 'unsettled' }]"
-                            @click="switchBilling('unsettled')">未结算清单</button>
-                    </div>
-
                     <!-- 结算列表 -->
                     <div v-if="billingTab === 'history'" class="panel-card">
                         <div class="section-header">
@@ -130,17 +133,6 @@
 
                 <!-- ── 用户管理 ── -->
                 <template v-if="mainTab === 'users'">
-                    <div class="sub-bar">
-                        <button :class="['sub-btn', { active: usersTab === 'orders' }]"
-                            @click="switchUsers('orders')">充值订单</button>
-                        <button :class="['sub-btn', { active: usersTab === 'list' }]"
-                            @click="switchUsers('list')">用户列表</button>
-                        <button :class="['sub-btn', { active: usersTab === 'cache' }]"
-                            @click="switchUsers('cache')">激活缓存</button>
-                        <button :class="['sub-btn', { active: usersTab === 'records' }]"
-                            @click="switchUsers('records')">激活记录</button>
-                    </div>
-
                     <!-- 充值订单 -->
                     <div v-if="usersTab === 'orders'" class="panel-card">
                         <div class="section-header">
@@ -377,6 +369,9 @@
                     <WebAdminTemplateReviewPanel :token="token" />
                 </template>
 
+                </main>
+                </div>
+
             </template><!-- end v-else isAdmin -->
         </div><!-- end page-stack -->
     </div><!-- end page-shell -->
@@ -404,36 +399,36 @@ const mainTab = ref('billing')
 const billingTab = ref('history')
 const usersTab = ref('orders')
 
-const categories = [
-    { k: 'billing', label: '结算管理' },
-    { k: 'users', label: '用户管理' },
-    { k: 'providers', label: '提供商管理' },
-    { k: 'review', label: '社区审核' },
+const navigationGroups = [
+    { label: '结算', items: [
+        { section: 'billing', tab: 'history', label: '结算列表' },
+        { section: 'billing', tab: 'unsettled', label: '未结算清单' },
+    ] },
+    { label: '用户与激活', items: [
+        { section: 'users', tab: 'orders', label: '充值订单' },
+        { section: 'users', tab: 'list', label: '用户列表' },
+        { section: 'users', tab: 'cache', label: '激活缓存' },
+        { section: 'users', tab: 'records', label: '激活记录' },
+    ] },
+    { label: '平台管理', items: [
+        { section: 'providers', label: '提供商权限' },
+        { section: 'review', label: '社区审核' },
+    ] },
 ]
 
 const billingTabs = ['history', 'unsettled']
 const userTabs = ['orders', 'list', 'cache', 'records']
-const currentCategoryLabel = computed(() => categories.find(cat => cat.k === mainTab.value)?.label || '')
-const currentSubLabel = computed(() => mainTab.value === 'billing'
-    ? ({ history: '结算列表', unsettled: '未结算清单' })[billingTab.value]
-    : mainTab.value === 'users'
-        ? ({ orders: '充值订单', list: '用户列表', cache: '激活缓存', records: '激活记录' })[usersTab.value]
-        : '')
+const categories = ['billing', 'users', 'providers', 'review']
+const currentPageLabel = computed(() => navigationGroups.flatMap(group => group.items)
+    .find(item => isActiveNav(item))?.label || '网站管理')
 
-function navigateAdmin(section, tab) {
-    router.push({ path: '/me/webadmin', query: { section, ...(tab ? { tab } : {}) } })
+function adminTo(item) {
+    return { path: '/me/webadmin', query: { section: item.section, ...(item.tab ? { tab: item.tab } : {}) } }
 }
 
-function switchMain(k) {
-    navigateAdmin(k, k === 'billing' ? billingTab.value : k === 'users' ? usersTab.value : '')
-}
-
-function switchBilling(sub) {
-    navigateAdmin('billing', sub)
-}
-
-function switchUsers(sub) {
-    navigateAdmin('users', sub)
+function isActiveNav(item) {
+    return mainTab.value === item.section && (!item.tab ||
+        (item.section === 'billing' ? billingTab.value : usersTab.value) === item.tab)
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -693,7 +688,7 @@ async function unbindUser(uuid, user_id) {
 // ── 初始化 ─────────────────────────────────────────────────────────────────
 watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, tab, allowed]) => {
     if (!allowed) return
-    const nextSection = categories.some(cat => cat.k === section) ? section : 'billing'
+    const nextSection = categories.includes(section) ? section : 'billing'
     const nextTab = nextSection === 'billing'
         ? (billingTabs.includes(tab) ? tab : 'history')
         : nextSection === 'users'
@@ -727,6 +722,98 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     display: contents;
 }
 
+.admin-page-stack {
+    width: min(1300px, 100%);
+}
+
+.admin-workspace {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    align-items: start;
+    gap: 24px;
+}
+
+.admin-sidebar {
+    position: sticky;
+    top: 18px;
+    padding: 16px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    background: rgba(var(--card-background-rgb), 0.82);
+    box-shadow: 0 12px 36px rgba(12, 24, 48, 0.06);
+}
+
+.admin-nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 2px 8px 16px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color);
+}
+
+.admin-nav-brand strong, .admin-nav-brand small { display: block; }
+.admin-nav-brand strong { font-size: 16px; }
+.admin-nav-brand small { margin-top: 2px; color: var(--secondary-text-color); font-size: 11px; }
+
+.admin-nav-mark {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    background: var(--theme-color);
+    color: #fff;
+    font-weight: 700;
+}
+
+.admin-nav-group { padding-top: 14px; }
+
+.admin-nav-heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px 6px;
+    color: var(--secondary-text-color);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .04em;
+}
+
+.admin-nav-heading span { color: var(--theme-color); }
+
+.admin-nav-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 40px;
+    padding: 0 11px;
+    border-radius: 10px;
+    color: var(--text-color);
+    font-size: 13px;
+    text-decoration: none;
+    transition: background .18s ease, color .18s ease;
+}
+
+.admin-nav-link:hover, .admin-nav-link:focus-visible {
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
+    outline: none;
+}
+
+.admin-nav-link.active {
+    background: rgba(var(--theme-color-rgb), 0.13);
+    color: var(--theme-color);
+    font-weight: 700;
+}
+
+.admin-nav-arrow { font-size: 18px; opacity: .5; }
+.admin-nav-link.active .admin-nav-arrow { opacity: 1; }
+
+.admin-content { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+.admin-content-header { padding: 2px 2px 4px; }
+.admin-content-header h1 { margin: 12px 0 0; color: var(--text-color); font-size: clamp(24px, 3vw, 30px); }
+
 .admin-path {
     display: flex;
     align-items: center;
@@ -737,6 +824,7 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
 }
 
 .admin-path a { color: var(--theme-color); text-decoration: none; }
+.admin-path a:hover { text-decoration: underline; }
 .admin-path strong { color: var(--text-color); font-weight: 600; }
 
 .admin-loading {
@@ -790,73 +878,6 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     margin: 0 0 24px;
     font-size: 14px;
     line-height: 1.7;
-}
-
-/* ── 主 Tab ── */
-.tab-bar {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    padding: 6px;
-    border-radius: 16px;
-    border: 1px solid var(--border-color);
-    background: rgba(var(--card-background-rgb), 0.55);
-}
-
-.tab-btn {
-    padding: 8px 22px;
-    border-radius: 999px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.12);
-    background: transparent;
-    color: var(--secondary-text-color);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.tab-btn.active {
-    background: var(--theme-color);
-    color: #fff;
-    border-color: var(--theme-color);
-    box-shadow: 0 4px 12px rgba(var(--theme-color-rgb), 0.2);
-}
-
-.tab-btn:hover:not(.active) {
-    border-color: var(--theme-color);
-    color: var(--theme-color);
-}
-
-/* ── 二级 Tab ── */
-.sub-bar {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    padding: 4px 0 8px;
-    border-bottom: 1px solid var(--border-color);
-}
-
-.sub-btn {
-    padding: 5px 16px;
-    border-radius: 999px;
-    border: 1px solid rgba(var(--text-color-rgb), 0.1);
-    background: transparent;
-    color: var(--secondary-text-color);
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.sub-btn.active {
-    background: rgba(var(--theme-color-rgb), 0.12);
-    color: var(--theme-color);
-    border-color: rgba(var(--theme-color-rgb), 0.3);
-}
-
-.sub-btn:hover:not(.active) {
-    border-color: var(--theme-color);
-    color: var(--theme-color);
 }
 
 /* ── Section header ── */
@@ -1230,7 +1251,27 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     background: var(--theme-color);
 }
 
+@media (max-width: 900px) {
+    .admin-workspace { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .admin-sidebar {
+        position: static;
+        display: flex;
+        gap: 14px;
+        overflow-x: auto;
+        padding: 12px;
+    }
+    .admin-nav-brand { min-width: 135px; padding: 0 12px 0 0; border-bottom: 0; border-right: 1px solid var(--border-color); }
+    .admin-nav-group { min-width: max-content; padding-top: 0; }
+    .admin-nav-link { display: inline-flex; gap: 12px; min-height: 36px; }
+    .admin-nav-arrow { display: none; }
+}
+
 @media (max-width: 600px) {
+    .admin-sidebar { gap: 8px; border-radius: 14px; }
+    .admin-nav-brand { min-width: 42px; padding-right: 10px; }
+    .admin-nav-brand > span:last-child { display: none; }
+    .admin-nav-heading { padding-left: 8px; }
+    .admin-nav-link { padding: 0 8px; }
     .hdr-actions {
         gap: 6px;
     }

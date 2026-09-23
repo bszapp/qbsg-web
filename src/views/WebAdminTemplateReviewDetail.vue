@@ -11,7 +11,7 @@
       <template v-else>
         <nav class="admin-path" aria-label="当前位置">
           <RouterLink to="/me">我的</RouterLink><span>/</span>
-          <RouterLink :to="reviewListPath">网站管理</RouterLink><span>/</span>
+          <RouterLink to="/me/webadmin?section=billing&tab=history">网站管理</RouterLink><span>/</span>
           <RouterLink :to="reviewListPath">社区审核</RouterLink><span>/</span>
           <strong>{{ item?.name || communityId }}</strong>
         </nav>

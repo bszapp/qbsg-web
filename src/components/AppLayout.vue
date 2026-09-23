@@ -106,43 +106,28 @@
             <span>个人设置</span>
           </div>
 
-          <!-- 管理后台二级菜单 -->
+          <!-- 管理后台入口 -->
           <template v-if="state.user?.providers?.length || state.user?.is_admin">
             <div class="divider" />
-            <div class="menu-item menu-item-parent" @click="toggleAdminSubmenu">
-              <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="3" width="20" height="14" rx="2" />
-                <path d="M8 21h8" />
-                <path d="M12 17v4" />
-              </svg>
-              <span>管理后台</span>
-              <svg class="menu-caret" :class="{ open: showAdminSubmenu }" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                style="width:14px;height:14px;margin-left:auto;transition:transform .2s">
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-            <div v-if="showAdminSubmenu" class="submenu">
-              <div v-for="p in (state.user?.providers ?? [])" :key="p.uuid" class="menu-item submenu-item"
-                :class="{ 'menu-item-active': route.path.startsWith('/me/provider') && route.query.id === p.uuid }"
-                @click="goToProviderAdmin(p.uuid)">
+            <div class="menu-section-label">管理后台</div>
+            <div v-if="state.user?.providers?.length" class="menu-item admin-menu-link"
+              :class="{ 'menu-item-active': route.path.startsWith('/me/provider') }"
+              @click="goToProviderAdmin">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <path
                     d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
                 </svg>
-                <span>{{ p.name }}</span>
-              </div>
-              <div v-if="state.user?.is_admin" class="menu-item submenu-item"
-                :class="{ 'menu-item-active': route.path.startsWith('/me/webadmin') }" @click="goToWebAdmin">
+                <span>提供商管理</span>
+            </div>
+            <div v-if="state.user?.is_admin" class="menu-item admin-menu-link"
+              :class="{ 'menu-item-active': route.path.startsWith('/me/webadmin') }" @click="goToWebAdmin">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10" />
                   <path d="M12 8v4l3 3" />
                 </svg>
                 <span>网站管理</span>
-              </div>
             </div>
           </template>
 
@@ -318,14 +303,6 @@ const {
   handleLoginToken,
 } = useAuth()
 
-// 管理菜单展开状态
-const showAdminSubmenu = ref(false)
-watch(() => route.path, path => {
-  if (path.startsWith('/me/webadmin') || path.startsWith('/me/provider')) {
-    showAdminSubmenu.value = true
-  }
-}, { immediate: true })
-
 const hasPreviousInternalRoute = ref(false)
 const previousRoute = ref(null)
 router.beforeEach((to, from) => {
@@ -489,19 +466,16 @@ function goToSettings() {
   router.push('/me/settings')
 }
 
-function goToProviderAdmin(uuid) {
+function goToProviderAdmin() {
   closeDropdown()
+  const providers = state.user?.providers ?? []
+  const uuid = providers.some(p => p.uuid === route.query.id) ? route.query.id : providers[0]?.uuid
   router.push({ path: '/me/provideradmin', query: { id: uuid, tab: 'catalog' } })
 }
 
 function goToWebAdmin() {
   closeDropdown()
   router.push('/me/webadmin')
-}
-
-function toggleAdminSubmenu(e) {
-  e.stopPropagation()
-  showAdminSubmenu.value = !showAdminSubmenu.value
 }
 
 async function handleLogout() {
@@ -653,30 +627,19 @@ onUnmounted(() => {
   margin-top: 4px;
 }
 
-.menu-item-parent {
-  cursor: pointer;
+.menu-section-label {
+  padding: 7px 14px 4px;
+  color: var(--secondary-text-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .05em;
 }
 
-.submenu {
-  background: rgba(0, 0, 0, 0.04);
-  border-radius: 6px;
-  margin: 2px 4px;
-}
-
-.submenu-item {
-  padding-left: 28px !important;
-  font-size: 13px;
-}
-
-.submenu-item.menu-item-active {
+.admin-menu-link.menu-item-active {
   color: var(--theme-color);
   background: rgba(var(--theme-color-rgb), 0.12);
   font-weight: 700;
   border-radius: 8px;
-}
-
-.menu-caret.open {
-  transform: rotate(180deg);
 }
 
 @media (max-width: 768px) {
