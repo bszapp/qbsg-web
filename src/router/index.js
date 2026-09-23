@@ -85,11 +85,7 @@ const routes = [
   {
     path: '/me/provider',
     name: 'me-provider',
-    component: ProviderAdmin,
-    meta: {
-      requiresAuth: true,
-      navPath: '/me',
-    },
+    redirect: (to) => ({ path: '/me/provideradmin', query: to.query }),
   },
   {
     path: '/me/provideradmin',
@@ -98,15 +94,28 @@ const routes = [
     meta: {
       requiresAuth: true,
       navPath: '/me',
+      viewKey: 'provideradmin',
+    },
+  },
+  {
+    path: '/me/provideradmin/:id/:tab',
+    name: 'me-provideradmin-page',
+    component: ProviderAdmin,
+    meta: {
+      requiresAuth: true,
+      navPath: '/me',
+      viewKey: 'provideradmin',
     },
   },
   {
     path: '/me/webadmin',
-    name: 'me-webadmin',
-    component: WebAdmin,
-    meta: {
-      requiresAuth: true,
-      navPath: '/me',
+    redirect: (to) => {
+      const section = typeof to.query.section === 'string' ? to.query.section : 'billing'
+      const tab = typeof to.query.tab === 'string' ? to.query.tab : ''
+      if (section === 'review' || section === 'providers') return `/me/webadmin/${section}/`
+      if (section === 'users' && ['orders', 'list', 'cache', 'records'].includes(tab)) return `/me/webadmin/users/${tab}/`
+      if (section === 'billing' && ['history', 'unsettled'].includes(tab)) return `/me/webadmin/billing/${tab}/`
+      return '/me/webadmin/billing/history/'
     },
   },
   {
@@ -117,6 +126,16 @@ const routes = [
     meta: {
       requiresAuth: true,
       navPath: '/me',
+    },
+  },
+  {
+    path: '/me/webadmin/:section/:tab?',
+    name: 'me-webadmin',
+    component: WebAdmin,
+    meta: {
+      requiresAuth: true,
+      navPath: '/me',
+      viewKey: 'webadmin',
     },
   },
 ]

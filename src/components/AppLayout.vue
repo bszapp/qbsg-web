@@ -113,20 +113,12 @@
             <div v-if="state.user?.providers?.length" class="menu-item admin-menu-link"
               :class="{ 'menu-item-active': route.path.startsWith('/me/provider') }"
               @click="goToProviderAdmin">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <path
-                    d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
-                </svg>
+                <i class="menu-icon fa-solid fa-boxes-stacked" aria-hidden="true"></i>
                 <span>提供商管理</span>
             </div>
             <div v-if="state.user?.is_admin" class="menu-item admin-menu-link"
               :class="{ 'menu-item-active': route.path.startsWith('/me/webadmin') }" @click="goToWebAdmin">
-                <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <path d="M12 8v4l3 3" />
-                </svg>
+                <i class="menu-icon fa-solid fa-gauge-high" aria-hidden="true"></i>
                 <span>网站管理</span>
             </div>
           </template>
@@ -231,7 +223,7 @@
 
         <RouterView v-else v-slot="{ Component }">
           <Transition name="page-transition" mode="out-in">
-            <component :is="Component" :key="$route.path" />
+            <component :is="Component" :key="$route.meta.viewKey || $route.path" />
           </Transition>
         </RouterView>
 
@@ -469,13 +461,14 @@ function goToSettings() {
 function goToProviderAdmin() {
   closeDropdown()
   const providers = state.user?.providers ?? []
-  const uuid = providers.some(p => p.uuid === route.query.id) ? route.query.id : providers[0]?.uuid
-  router.push({ path: '/me/provideradmin', query: { id: uuid, tab: 'catalog' } })
+  const currentId = route.params.id || route.query.id
+  const uuid = providers.some(p => p.uuid === currentId) ? currentId : providers[0]?.uuid
+  router.push(uuid ? `/me/provideradmin/${encodeURIComponent(uuid)}/catalog/` : '/me/provideradmin')
 }
 
 function goToWebAdmin() {
   closeDropdown()
-  router.push('/me/webadmin')
+  router.push('/me/webadmin/billing/history/')
 }
 
 async function handleLogout() {
@@ -635,12 +628,15 @@ onUnmounted(() => {
   letter-spacing: .05em;
 }
 
+.admin-menu-link i.menu-icon { display: inline-flex; align-items: center; justify-content: center; font-size: 16px; }
+
 .admin-menu-link.menu-item-active {
   color: var(--theme-color);
   background: rgba(var(--theme-color-rgb), 0.12);
   font-weight: 700;
   border-radius: 8px;
 }
+.admin-menu-link.menu-item-active i.menu-icon { color: var(--theme-color); }
 
 @media (max-width: 768px) {
   .user-pill {

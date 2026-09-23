@@ -36,10 +36,10 @@
 
             <nav class="provider-nav" aria-label="提供商管理页面">
                 <RouterLink v-for="tab in tabs" :key="tab.key"
-                    :to="{ path: '/me/provideradmin', query: { id: selectedUuid, tab: tab.key } }"
+                    :to="providerPath(selectedUuid, tab.key)"
                     :class="['provider-nav-link', { active: activeTab === tab.key }]"
                     :aria-current="activeTab === tab.key ? 'page' : undefined">
-                    {{ tab.label }}
+                    <i :class="tab.icon" aria-hidden="true"></i>{{ tab.label }}
                 </RouterLink>
             </nav>
 
@@ -349,24 +349,33 @@ async function resetAndSelectProvider(uuid, tab = 'catalog') {
     if (tab === 'script') await applyTab('script')
 }
 
-watch(() => [route.query.id, route.query.tab], async ([newId, newTab]) => {
+async function syncProviderRoute() {
     if (!myProviders.value.length) return
-    const nextId = myProviders.value.some(p => p.uuid === newId) ? newId : myProviders.value[0].uuid
-    const nextTab = newTab === 'script' ? 'script' : 'catalog'
-    if (newId !== nextId || newTab !== nextTab) {
-        await router.replace({ path: '/me/provideradmin', query: { id: nextId, tab: nextTab } })
+    const requestedId = route.params.id || route.query.id
+    const requestedTab = route.params.tab || route.query.tab
+    const nextId = myProviders.value.some(p => p.uuid === requestedId) ? requestedId : myProviders.value[0].uuid
+    const nextTab = requestedTab === 'script' ? 'script' : 'catalog'
+    const nextPath = providerPath(nextId, nextTab)
+    if (route.path !== nextPath || Object.keys(route.query).length) {
+        await router.replace(nextPath)
         return
     }
     if (selectedUuid.value !== nextId) await resetAndSelectProvider(nextId, nextTab)
     else if (activeTab.value !== nextTab) await applyTab(nextTab)
-})
+}
+
+watch(() => [route.params.id, route.params.tab, route.query.id, route.query.tab], syncProviderRoute)
 
 // ── 标签页 ────────────────────────────────────────────────────────────────────
 const tabs = [
-    { key: 'catalog', label: '固件目录' },
-    { key: 'script', label: '激活脚本' },
+    { key: 'catalog', label: '固件目录', icon: 'fa-solid fa-boxes-stacked' },
+    { key: 'script', label: '激活脚本', icon: 'fa-solid fa-code' },
 ]
 const activeTab = ref('catalog')
+
+function providerPath(uuid, tab = 'catalog') {
+    return `/me/provideradmin/${encodeURIComponent(uuid)}/${tab}/`
+}
 
 async function applyTab(key) {
     activeTab.value = key
@@ -378,7 +387,7 @@ async function applyTab(key) {
 
 function switchProvider(uuid) {
     if (uuid === selectedUuid.value) return
-    router.push({ path: '/me/provideradmin', query: { id: uuid, tab: activeTab.value } })
+    router.push(providerPath(uuid, activeTab.value))
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
@@ -798,14 +807,7 @@ function copyTextByTextarea(text) {
 // ── 初始化 ────────────────────────────────────────────────────────────────────
 onMounted(async () => {
     await loadMyProviders()
-    const idParam = route.query.id
-    if (!myProviders.value.length) return
-    const nextId = myProviders.value.some(p => p.uuid === idParam) ? idParam : myProviders.value[0].uuid
-    const nextTab = route.query.tab === 'script' ? 'script' : 'catalog'
-    if (idParam !== nextId || route.query.tab !== nextTab) {
-        await router.replace({ path: '/me/provideradmin', query: { id: nextId, tab: nextTab } })
-    }
-    if (selectedUuid.value !== nextId) await resetAndSelectProvider(nextId, nextTab)
+    await syncProviderRoute()
 })
 </script>
 
@@ -913,6 +915,10 @@ onMounted(async () => {
 }
 
 .provider-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
     min-width: 130px;
     padding: 11px 18px;
     border-radius: 9px;
@@ -923,6 +929,8 @@ onMounted(async () => {
     text-decoration: none;
     transition: background .18s ease, color .18s ease;
 }
+
+.provider-nav-link i { font-size: 14px; }
 
 .provider-nav-link.active {
     background: rgba(var(--theme-color-rgb), .13);

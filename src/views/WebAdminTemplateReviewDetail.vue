@@ -11,7 +11,7 @@
       <template v-else>
         <nav class="admin-path" aria-label="当前位置">
           <RouterLink to="/me">我的</RouterLink><span>/</span>
-          <RouterLink to="/me/webadmin?section=billing&tab=history">网站管理</RouterLink><span>/</span>
+          <RouterLink to="/me/webadmin/billing/history/">网站管理</RouterLink><span>/</span>
           <RouterLink :to="reviewListPath">社区审核</RouterLink><span>/</span>
           <strong>{{ item?.name || communityId }}</strong>
         </nav>
@@ -152,7 +152,7 @@ const { state, handleAuthFailure } = useAuth()
 const token = computed(() => state.token)
 const isAdmin = computed(() => state.user?.is_admin === true)
 const communityId = computed(() => String(route.params.communityId || ''))
-const reviewListPath = '/me/webadmin?section=review'
+const reviewListPath = '/me/webadmin/review/'
 
 const item = ref(null)
 const loading = ref(false)

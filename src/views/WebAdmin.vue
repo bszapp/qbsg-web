@@ -15,15 +15,16 @@
                 <div class="admin-workspace">
                 <nav class="admin-sidebar" aria-label="网站管理页面">
                     <div class="admin-nav-brand">
-                        <span class="admin-nav-mark">管</span>
+                        <span class="admin-nav-mark"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></span>
                         <span><strong>网站管理</strong><small>管理后台</small></span>
                     </div>
-                    <div v-for="(group, index) in navigationGroups" :key="group.label" class="admin-nav-group">
-                        <div class="admin-nav-heading"><span>{{ String(index + 1).padStart(2, '0') }}</span>{{ group.label }}</div>
+                    <div v-for="group in navigationGroups" :key="group.label" class="admin-nav-group">
+                        <div class="admin-nav-heading"><i :class="group.icon" aria-hidden="true"></i>{{ group.label }}</div>
                         <RouterLink v-for="item in group.items" :key="item.label" :to="adminTo(item)"
                             :class="['admin-nav-link', { active: isActiveNav(item) }]"
                             :aria-current="isActiveNav(item) ? 'page' : undefined">
-                            <span>{{ item.label }}</span><span class="admin-nav-arrow" aria-hidden="true">›</span>
+                            <span class="admin-nav-link-label"><i :class="item.icon" aria-hidden="true"></i>{{ item.label }}</span>
+                            <i class="admin-nav-arrow fa-solid fa-chevron-right" aria-hidden="true"></i>
                         </RouterLink>
                     </div>
                 </nav>
@@ -179,21 +180,28 @@
                     <div v-if="usersTab === 'list'" class="panel-card">
                         <div class="section-header">
                             <h2 class="section-title">用户列表</h2>
-                            <input v-model="userSearch" placeholder="搜索用户名…" class="inline-input" />
+                            <div class="hdr-actions">
+                                <input v-model="userSearch" placeholder="搜索用户名…" class="inline-input"
+                                    @keyup.enter="searchUsers" />
+                                <button class="secondary-button small-btn" @click="searchUsers">搜索</button>
+                                <button v-if="userAppliedSearch" class="secondary-button small-btn" @click="clearUserSearch">清除</button>
+                            </div>
                         </div>
                         <div class="table-wrap">
                             <table class="wa-table">
                                 <thead>
                                     <tr>
-                                        <th>用户名</th>
-                                        <th>积分</th>
+                                        <th :aria-sort="userSortBy === 'uid' ? userSortAria : 'none'"><button class="sort-heading" @click="setUserSort('uid')">UID <i :class="userSortIcon('uid')" aria-hidden="true"></i></button></th>
+                                        <th :aria-sort="userSortBy === 'username' ? userSortAria : 'none'"><button class="sort-heading" @click="setUserSort('username')">用户名 <i :class="userSortIcon('username')" aria-hidden="true"></i></button></th>
+                                        <th :aria-sort="userSortBy === 'points' ? userSortAria : 'none'"><button class="sort-heading" @click="setUserSort('points')">积分 <i :class="userSortIcon('points')" aria-hidden="true"></i></button></th>
                                         <th>管理员</th>
                                         <th>注册时间</th>
                                         <th>操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr v-for="u in filteredUsers" :key="u.id">
+                                    <tr v-for="u in users" :key="u.id">
+                                        <td class="muted-text">{{ u.id }}</td>
                                         <td>{{ u.username }}</td>
                                         <td><span class="pts-badge">{{ u.points }}</span></td>
                                         <td>{{ u.is_admin ? '✅' : '' }}</td>
@@ -207,6 +215,17 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div v-if="!users.length" class="state-text">没有符合条件的用户</div>
+                        <div class="list-pager">
+                            <span>共 {{ userTotal }} 人 · 每页 100 条</span>
+                            <div class="list-pager-actions">
+                                <button class="secondary-button small-btn" :disabled="userPage <= 1" @click="goUserPage(userPage - 1)">上一页</button>
+                                <span>第 {{ userPage }} / {{ userTotalPages }} 页</span>
+                                <button class="secondary-button small-btn" :disabled="userPage >= userTotalPages" @click="goUserPage(userPage + 1)">下一页</button>
+                                <label>跳至 <input v-model.number="userJumpPage" type="number" min="1" :max="userTotalPages" class="page-input" @keyup.enter="goUserPage(userJumpPage)" /> 页</label>
+                                <button class="secondary-button small-btn" @click="goUserPage(userJumpPage)">跳转</button>
+                            </div>
                         </div>
                     </div>
 
@@ -246,6 +265,12 @@
                     <div v-if="usersTab === 'records'" class="panel-card">
                         <div class="section-header">
                             <h2 class="section-title">激活记录</h2>
+                            <div class="hdr-actions">
+                                <input v-model="recordSearch" placeholder="按用户名搜索激活记录…" class="inline-input"
+                                    @keyup.enter="searchRecords" />
+                                <button class="secondary-button small-btn" @click="searchRecords">搜索</button>
+                                <button v-if="recordAppliedSearch" class="secondary-button small-btn" @click="clearRecordSearch">清除</button>
+                            </div>
                         </div>
                         <div class="table-wrap">
                             <table class="wa-table">
@@ -272,6 +297,17 @@
                                     </tr>
                                 </tbody>
                             </table>
+                        </div>
+                        <div v-if="!activationRecords.length" class="state-text">没有符合条件的激活记录</div>
+                        <div class="list-pager">
+                            <span>共 {{ recordTotal }} 条 · 每页 100 条</span>
+                            <div class="list-pager-actions">
+                                <button class="secondary-button small-btn" :disabled="recordPage <= 1" @click="goRecordPage(recordPage - 1)">上一页</button>
+                                <span>第 {{ recordPage }} / {{ recordTotalPages }} 页</span>
+                                <button class="secondary-button small-btn" :disabled="recordPage >= recordTotalPages" @click="goRecordPage(recordPage + 1)">下一页</button>
+                                <label>跳至 <input v-model.number="recordJumpPage" type="number" min="1" :max="recordTotalPages" class="page-input" @keyup.enter="goRecordPage(recordJumpPage)" /> 页</label>
+                                <button class="secondary-button small-btn" @click="goRecordPage(recordJumpPage)">跳转</button>
+                            </div>
                         </div>
                     </div>
 
@@ -394,25 +430,25 @@ const router = useRouter()
 const token = computed(() => state.token)
 const isAdmin = computed(() => state.user?.is_admin === true)
 
-// ── 分类 Tab ──────────────────────────────────────────────────────────────────
+// ── 管理页面导航 ──────────────────────────────────────────────────────────────
 const mainTab = ref('billing')
 const billingTab = ref('history')
 const usersTab = ref('orders')
 
 const navigationGroups = [
-    { label: '结算', items: [
-        { section: 'billing', tab: 'history', label: '结算列表' },
-        { section: 'billing', tab: 'unsettled', label: '未结算清单' },
+    { label: '结算', icon: 'fa-solid fa-wallet', items: [
+        { section: 'billing', tab: 'history', label: '结算列表', icon: 'fa-solid fa-file-invoice-dollar' },
+        { section: 'billing', tab: 'unsettled', label: '未结算清单', icon: 'fa-solid fa-list-check' },
     ] },
-    { label: '用户与激活', items: [
-        { section: 'users', tab: 'orders', label: '充值订单' },
-        { section: 'users', tab: 'list', label: '用户列表' },
-        { section: 'users', tab: 'cache', label: '激活缓存' },
-        { section: 'users', tab: 'records', label: '激活记录' },
+    { label: '用户与激活', icon: 'fa-solid fa-users-gear', items: [
+        { section: 'users', tab: 'orders', label: '充值订单', icon: 'fa-solid fa-receipt' },
+        { section: 'users', tab: 'list', label: '用户列表', icon: 'fa-solid fa-users' },
+        { section: 'users', tab: 'cache', label: '激活缓存', icon: 'fa-solid fa-database' },
+        { section: 'users', tab: 'records', label: '激活记录', icon: 'fa-solid fa-clock-rotate-left' },
     ] },
-    { label: '平台管理', items: [
-        { section: 'providers', label: '提供商权限' },
-        { section: 'review', label: '社区审核' },
+    { label: '平台管理', icon: 'fa-solid fa-sliders', items: [
+        { section: 'providers', label: '提供商权限', icon: 'fa-solid fa-building' },
+        { section: 'review', label: '社区审核', icon: 'fa-solid fa-clipboard-check' },
     ] },
 ]
 
@@ -423,7 +459,7 @@ const currentPageLabel = computed(() => navigationGroups.flatMap(group => group.
     .find(item => isActiveNav(item))?.label || '网站管理')
 
 function adminTo(item) {
-    return { path: '/me/webadmin', query: { section: item.section, ...(item.tab ? { tab: item.tab } : {}) } }
+    return item.tab ? `/me/webadmin/${item.section}/${item.tab}/` : `/me/webadmin/${item.section}/`
 }
 
 function isActiveNav(item) {
@@ -553,16 +589,67 @@ async function deleteOrder(order_no) {
 // ── 用户列表 ───────────────────────────────────────────────────────────────
 const users = ref([])
 const userSearch = ref('')
+const userAppliedSearch = ref('')
+const userSortBy = ref('uid')
+const userSortDir = ref('desc')
+const userPage = ref(1)
+const userJumpPage = ref(1)
+const userTotalPages = ref(1)
+const userTotal = ref(0)
+let usersRequest = 0
 const editUser = ref(null)
 const editForm = reactive({ username: '', points: 0, delta: 0, newPassword: '' })
-const filteredUsers = computed(() => {
-    const kw = userSearch.value.toLowerCase()
-    return kw ? users.value.filter(u => u.username.toLowerCase().includes(kw)) : users.value
-})
+const userSortAria = computed(() => userSortDir.value === 'asc' ? 'ascending' : 'descending')
 
-async function loadUsers() {
-    const d = await api('/users/list')
-    if (d.ok) users.value = d.users
+function userSortIcon(field) {
+    if (userSortBy.value !== field) return 'fa-solid fa-sort'
+    return userSortDir.value === 'asc' ? 'fa-solid fa-arrow-up' : 'fa-solid fa-arrow-down'
+}
+
+async function loadUsers(page = userPage.value) {
+    const request = ++usersRequest
+    try {
+        const d = await api('/users/list', {
+            page, keyword: userAppliedSearch.value, sort_by: userSortBy.value, sort_dir: userSortDir.value,
+        })
+        if (request !== usersRequest) return
+        if (!d.ok) throw new Error(d.error || '用户列表加载失败')
+        users.value = d.users
+        userPage.value = d.page
+        userJumpPage.value = d.page
+        userTotalPages.value = d.totalPages
+        userTotal.value = d.total
+    } catch (error) {
+        if (request !== usersRequest) return
+        users.value = []
+        toast(error.message || '用户列表加载失败', 'err')
+    }
+}
+
+function searchUsers() {
+    userAppliedSearch.value = userSearch.value.trim()
+    loadUsers(1)
+}
+
+function clearUserSearch() {
+    userSearch.value = ''
+    userAppliedSearch.value = ''
+    loadUsers(1)
+}
+
+function setUserSort(field) {
+    if (userSortBy.value === field) userSortDir.value = userSortDir.value === 'asc' ? 'desc' : 'asc'
+    else {
+        userSortBy.value = field
+        userSortDir.value = field === 'username' ? 'asc' : 'desc'
+    }
+    loadUsers(1)
+}
+
+function goUserPage(page) {
+    const next = Number(page)
+    if (!Number.isInteger(next) || next < 1 || next > userTotalPages.value) return
+    loadUsers(next)
 }
 
 function openUserEdit(u) {
@@ -632,10 +719,47 @@ async function clearAllCache() {
 
 // ── 激活记录 ───────────────────────────────────────────────────────────────
 const activationRecords = ref([])
+const recordSearch = ref('')
+const recordAppliedSearch = ref('')
+const recordPage = ref(1)
+const recordJumpPage = ref(1)
+const recordTotalPages = ref(1)
+const recordTotal = ref(0)
+let recordsRequest = 0
 
-async function loadRecords() {
-    const d = await api('/activation-records/list')
-    if (d.ok) activationRecords.value = d.records
+async function loadRecords(page = recordPage.value) {
+    const request = ++recordsRequest
+    try {
+        const d = await api('/activation-records/list', { page, keyword: recordAppliedSearch.value })
+        if (request !== recordsRequest) return
+        if (!d.ok) throw new Error(d.error || '激活记录加载失败')
+        activationRecords.value = d.records
+        recordPage.value = d.page
+        recordJumpPage.value = d.page
+        recordTotalPages.value = d.totalPages
+        recordTotal.value = d.total
+    } catch (error) {
+        if (request !== recordsRequest) return
+        activationRecords.value = []
+        toast(error.message || '激活记录加载失败', 'err')
+    }
+}
+
+function searchRecords() {
+    recordAppliedSearch.value = recordSearch.value.trim()
+    loadRecords(1)
+}
+
+function clearRecordSearch() {
+    recordSearch.value = ''
+    recordAppliedSearch.value = ''
+    loadRecords(1)
+}
+
+function goRecordPage(page) {
+    const next = Number(page)
+    if (!Number.isInteger(next) || next < 1 || next > recordTotalPages.value) return
+    loadRecords(next)
 }
 
 async function deleteRecord(id) {
@@ -686,7 +810,7 @@ async function unbindUser(uuid, user_id) {
 }
 
 // ── 初始化 ─────────────────────────────────────────────────────────────────
-watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, tab, allowed]) => {
+watch(() => [route.params.section, route.params.tab, isAdmin.value], ([section, tab, allowed]) => {
     if (!allowed) return
     const nextSection = categories.includes(section) ? section : 'billing'
     const nextTab = nextSection === 'billing'
@@ -694,8 +818,9 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
         : nextSection === 'users'
             ? (userTabs.includes(tab) ? tab : 'orders')
             : ''
-    if (section !== nextSection || (tab || '') !== nextTab) {
-        router.replace({ path: '/me/webadmin', query: { section: nextSection, ...(nextTab ? { tab: nextTab } : {}) } })
+    const nextPath = nextTab ? `/me/webadmin/${nextSection}/${nextTab}/` : `/me/webadmin/${nextSection}/`
+    if (route.path !== nextPath) {
+        router.replace(nextPath)
         return
     }
     mainTab.value = nextSection
@@ -780,7 +905,7 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     letter-spacing: .04em;
 }
 
-.admin-nav-heading span { color: var(--theme-color); }
+.admin-nav-heading i { width: 15px; color: var(--theme-color); text-align: center; }
 
 .admin-nav-link {
     display: flex;
@@ -807,7 +932,11 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     font-weight: 700;
 }
 
-.admin-nav-arrow { font-size: 18px; opacity: .5; }
+.admin-nav-link-label { display: inline-flex; align-items: center; gap: 10px; }
+.admin-nav-link-label i { width: 16px; text-align: center; color: var(--secondary-text-color); }
+.admin-nav-link.active .admin-nav-link-label i,
+.admin-nav-link:hover .admin-nav-link-label i { color: var(--theme-color); }
+.admin-nav-arrow { font-size: 11px; opacity: .5; }
 .admin-nav-link.active .admin-nav-arrow { opacity: 1; }
 
 .admin-content { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
@@ -887,6 +1016,46 @@ watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, ta
     align-items: center;
     flex-wrap: wrap;
 }
+
+.sort-heading {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-weight: inherit;
+    cursor: pointer;
+}
+.sort-heading:hover, .sort-heading:focus-visible { color: var(--theme-color); }
+.sort-heading i { font-size: 11px; }
+
+.list-pager {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-top: 16px;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+}
+.list-pager-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.list-pager-actions label { display: inline-flex; align-items: center; gap: 5px; }
+.page-input {
+    width: 58px;
+    min-height: 32px;
+    padding: 3px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 7px;
+    background: rgba(var(--card-background-rgb), .85);
+    color: var(--text-color);
+    font: inherit;
+    text-align: center;
+}
+.page-input:focus-visible { outline: 2px solid var(--theme-color); outline-offset: 2px; }
 
 /* ── 表格 ── */
 .table-wrap {
