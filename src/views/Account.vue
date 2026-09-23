@@ -26,7 +26,7 @@
           <div class="section-header">
             <div>
               <h2 class="section-title">积分充值</h2>
-              <p class="section-desc">支持快捷面额、自定义积分、支付宝跳转，以及回调后自动认领。</p>
+              <p class="section-desc">支持快捷面额、自定义积分、支付宝跳转，以及返回后自动确认支付。</p>
             </div>
           </div>
 
@@ -76,19 +76,19 @@
         <section class="panel-card">
           <div class="section-header">
             <div>
-              <h2 class="section-title">订单号充值认领</h2>
+              <h2 class="section-title">按订单号确认支付</h2>
               <p class="section-desc">适用于支付回跳未自动到账的场景。</p>
             </div>
           </div>
 
-          <div class="field-group claim-group">
+          <div class="field-group confirm-group">
             <label class="field-label">商家订单号</label>
-            <input v-model="claimOrderNo" type="text" class="text-input" placeholder="输入支付时生成的订单号" />
+            <input v-model="confirmOrderNo" type="text" class="text-input" placeholder="输入支付时生成的订单号" />
           </div>
 
           <div class="button-row">
-            <button type="button" class="primary-button" @click="claimOrder" :disabled="claimingOrder">
-              {{ claimingOrder ? '确认中...' : '确认到账' }}
+            <button type="button" class="primary-button" @click="confirmOrderPayment" :disabled="confirmingPayment">
+              {{ confirmingPayment ? '核对中...' : '确认支付结果' }}
             </button>
           </div>
         </section>
@@ -183,9 +183,9 @@
                 </div>
 
                 <!-- 已完成支付 -->
-                <button type="button" class="btn btn-primary btn-block pay-confirm-btn" @click="handleClaimFromModal"
-                  :disabled="claimingOrder">
-                  <span>{{ claimingOrder ? '确认中...' : '我已完成支付' }}</span>
+                <button type="button" class="btn btn-primary btn-block pay-confirm-btn" @click="handleConfirmFromModal"
+                  :disabled="confirmingPayment">
+                  <span>{{ confirmingPayment ? '核对中...' : '我已完成支付' }}</span>
                   <svg class="icon-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                     stroke-linecap="round" stroke-linejoin="round">
                     <path d="M5 12h14" />
@@ -193,7 +193,7 @@
                   </svg>
                 </button>
 
-                <p class="pay-tip-text">支付成功后点击"我已完成支付"完成积分到账；若长时间未到账可在右侧输入订单号手动确认。</p>
+                <p class="pay-tip-text">支付成功后点击“我已完成支付”，服务器核对订单后会将积分充值给创建者；若长时间未到账，可输入订单号再次确认。</p>
               </div>
             </div>
           </Transition>
@@ -221,9 +221,9 @@ const payConfig = ref(null)
 const loadingPayConfig = ref(false)
 const loadingProfile = ref(false)
 const creatingOrder = ref(false)
-const claimingOrder = ref(false)
+const confirmingPayment = ref(false)
 const selectedPoints = ref('')
-const claimOrderNo = ref('')
+const confirmOrderNo = ref('')
 const orderResult = ref(null)
 const showPayModal = ref(false)
 const qrCanvas = ref(null)
@@ -300,10 +300,10 @@ const amountHint = computed(() => {
 
   const amount = Math.round(selectedPointsNumber.value * Number(payConfig.value.yuan_per_point || 0) * discountRate * 100) / 100
 
-  if (amount < Number(payConfig.value.min_alipay_yuan || 0)) {
+  if (amount < Number(payConfig.value.min_payment_yuan || 0)) {
     return {
       tone: 'danger',
-      text: `当前金额低于最低支付 ¥${payConfig.value.min_alipay_yuan}`,
+      text: `当前金额低于最低支付 ¥${payConfig.value.min_payment_yuan}`,
     }
   }
 
@@ -381,7 +381,7 @@ async function createRechargeOrder() {
         directUrl: data.direct_url || null,
         directScheme: data.direct_scheme || null,
       }
-      claimOrderNo.value = data.order_no
+      confirmOrderNo.value = data.order_no
       showPayModal.value = true
 
       // 弹窗打开后立即尝试 URL Scheme 唤起支付宝（失败静默）
@@ -405,19 +405,19 @@ async function createRechargeOrder() {
   }
 }
 
-async function claimOrder(options = {}) {
+async function confirmOrderPayment(options = {}) {
   const { orderNo: orderNoFromOptions = '', isAuto = false } = options
-  const orderNo = (orderNoFromOptions || claimOrderNo.value).trim()
+  const orderNo = (orderNoFromOptions || confirmOrderNo.value).trim()
 
   if (!orderNo) {
     showToast('请输入订单号', 'warning', 2800)
     return false
   }
 
-  claimingOrder.value = true
+  confirmingPayment.value = true
 
   try {
-    const data = await postJson('/api/pay/claim', {
+    const data = await postJson('/api/pay/confirm', {
       token: authState.token,
       order_no: orderNo,
     })
@@ -445,13 +445,13 @@ async function claimOrder(options = {}) {
     showToast(error.message || '订单确认失败，请稍后重试', 'error', 3400)
     return false
   } finally {
-    claimingOrder.value = false
+    confirmingPayment.value = false
   }
 }
 
 // 弹窗内"我已完成支付"按钮
-async function handleClaimFromModal() {
-  const success = await claimOrder()
+async function handleConfirmFromModal() {
+  const success = await confirmOrderPayment()
   if (success) {
     closePayModal()
   }
@@ -465,9 +465,9 @@ async function handleReturnOrder() {
     return
   }
 
-  claimOrderNo.value = returnOrderNo
+  confirmOrderNo.value = returnOrderNo
   clearPaymentQuery()
-  await claimOrder({
+  await confirmOrderPayment({
     orderNo: returnOrderNo,
     isAuto: true,
   })
@@ -587,7 +587,7 @@ onMounted(async () => {
   border-color: rgba(var(--error-color-rgb), 0.18);
 }
 
-.claim-group {
+.confirm-group {
   margin: 18px 0;
 }
 

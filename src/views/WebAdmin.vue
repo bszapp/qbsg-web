@@ -146,11 +146,10 @@
                         <div class="section-header">
                             <h2 class="section-title">充值订单</h2>
                             <div class="hdr-actions">
-                                <input v-model="orderKeyword" placeholder="搜索订单号或用户名…" class="inline-input"
+                                <input v-model="orderKeyword" placeholder="搜索订单号或创建者用户名…" class="inline-input"
                                     @keyup.enter="searchOrders" />
                                 <button @click="searchOrders" class="secondary-button small-btn">搜索</button>
                                 <button @click="loadOrders" class="secondary-button small-btn">重置</button>
-                                <button @click="cleanupOrders" class="warn-btn">清理7天前未认领</button>
                             </div>
                         </div>
                         <div class="table-wrap">
@@ -160,7 +159,8 @@
                                         <th>订单号</th>
                                         <th>积分</th>
                                         <th>金额</th>
-                                        <th>认领人</th>
+                                        <th>创建者</th>
+                                        <th>支付状态</th>
                                         <th>创建时间</th>
                                         <th>操作</th>
                                     </tr>
@@ -170,12 +170,12 @@
                                         <td class="mono">{{ o.order_no }}</td>
                                         <td><span class="pts-badge">{{ o.points }}</span></td>
                                         <td>¥{{ o.amount_yuan }}</td>
-                                        <td>{{ o.claimed_by ?? '未认领' }}</td>
+                                        <td>{{ o.creator_uid === 0 ? '未知' : o.creator_username ? `${o.creator_username}（UID ${o.creator_uid}）` : `UID ${o.creator_uid}` }}</td>
+                                        <td>{{ o.payment_status === 'paid' ? '已支付' : '未支付' }}</td>
                                         <td class="muted-text">{{ fmt(o.created_at) }}</td>
                                         <td class="actions-cell">
-                                            <button v-if="o.claimed_by" class="secondary-button small-btn"
-                                                @click="unclaimOrder(o.order_no)">撤销认领</button>
-                                            <button class="danger-text-btn" @click="deleteOrder(o.order_no)">删除</button>
+                                            <button v-if="o.payment_status === 'unpaid'" class="danger-text-btn" @click="deleteOrder(o.order_no)">删除</button>
+                                            <span v-else class="muted-text">—</span>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -526,33 +526,33 @@ const orders = ref([])
 const orderKeyword = ref('')
 
 async function loadOrders() {
-    const d = await api('/orders/list')
-    if (d.ok) orders.value = d.orders
+    try {
+        const d = await api('/orders/list')
+        if (d.ok) orders.value = d.orders
+        else { orders.value = []; toast(d.error || '订单列表加载失败', 'err') }
+    } catch (error) {
+        orders.value = []
+        toast(error.message || '订单列表加载失败', 'err')
+    }
 }
 
 async function searchOrders() {
     if (!orderKeyword.value.trim()) return loadOrders()
-    const d = await api('/orders/search', { keyword: orderKeyword.value.trim() })
-    if (d.ok) orders.value = d.orders
-}
-
-async function unclaimOrder(order_no) {
-    const d = await api('/orders/unclaim', { order_no })
-    toast(d.ok ? d.message : d.error, d.ok ? 'ok' : 'err')
-    if (d.ok) loadOrders()
+    try {
+        const d = await api('/orders/search', { keyword: orderKeyword.value.trim() })
+        if (d.ok) orders.value = d.orders
+        else { orders.value = []; toast(d.error || '订单搜索失败', 'err') }
+    } catch (error) {
+        orders.value = []
+        toast(error.message || '订单搜索失败', 'err')
+    }
 }
 
 async function deleteOrder(order_no) {
     if (!confirm('确认删除订单 ' + order_no + '？')) return
     const d = await api('/orders/delete', { order_no })
     toast(d.ok ? d.message : d.error, d.ok ? 'ok' : 'err')
-    if (d.ok) loadOrders()
-}
-
-async function cleanupOrders() {
-    const d = await api('/orders/cleanup-unclaimed')
-    toast(d.ok ? `已清理 ${d.deleted} 条` : d.error, d.ok ? 'ok' : 'err')
-    if (d.ok) loadOrders()
+    loadOrders()
 }
 
 // ── 用户列表 ───────────────────────────────────────────────────────────────
