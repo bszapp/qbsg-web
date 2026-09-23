@@ -2,7 +2,7 @@
     <div class="page-shell">
 
         <!-- 初始加载 -->
-        <div v-if="pageLoading" class="state-text">加载中…</div>
+        <div v-if="pageLoading || (!selectedUuid && myProviders.length)" class="admin-loading" role="status"><span class="admin-loading-spinner" />正在加载提供商权限…</div>
 
         <!-- 无提供商权限 -->
         <div v-else-if="myProviders.length === 0" class="no-permission-card">
@@ -14,6 +14,12 @@
 
         <!-- 主界面 -->
         <div v-else-if="selectedUuid" class="page-stack">
+            <nav class="admin-path" aria-label="当前位置">
+                <RouterLink to="/me">我的</RouterLink><span>/</span>
+                <strong>提供商管理</strong><span>/</span>
+                <strong>{{ selectedProviderName }}</strong><span>/</span>
+                <strong>{{ tabs.find(tab => tab.key === activeTab)?.label }}</strong>
+            </nav>
             <section class="hero-card">
                 <span class="page-eyebrow">管理后台</span>
                 <div class="page-title-row">
@@ -21,9 +27,9 @@
                 </div>
             </section>
 
-            <div class="tab-bar">
+            <div class="tab-bar" aria-label="提供商管理页面">
                 <button v-for="tab in tabs" :key="tab.key" :class="['tab-btn', { active: activeTab === tab.key }]"
-                    @click="switchTab(tab.key)">
+                    :aria-current="activeTab === tab.key ? 'page' : undefined" @click="switchTab(tab.key)">
                     {{ tab.label }}
                 </button>
             </div>
@@ -38,10 +44,10 @@
                     <button class="primary-button small-btn" @click="openAddGroupModal">＋ 创建新分组</button>
                 </div>
 
-                <div v-if="loadingCatalog" class="state-text">加载中…</div>
+                <div v-if="loadingCatalog" class="admin-loading" role="status"><span class="admin-loading-spinner" />正在加载固件目录…</div>
                 <div v-else-if="groups.length === 0" class="state-text">暂无分组，点击右上角「创建新分组」</div>
 
-                <div v-for="(group, gi) in groups" :key="group.id ?? ('new-' + gi)" class="group-block">
+                <div v-for="(group, gi) in groups" v-show="!loadingCatalog" :key="group.id ?? ('new-' + gi)" class="group-block">
                     <!-- 分组头 -->
                     <div class="group-header">
                         <div class="group-meta">
@@ -105,7 +111,7 @@
                             </p>
                         </div>
                     </div>
-                    <div v-if="loadingScript" class="state-text">加载中…</div>
+                    <div v-if="loadingScript" class="admin-loading" role="status"><span class="admin-loading-spinner" />正在加载激活脚本…</div>
                     <div v-else>
                         <div class="script-editor-shell">
                             <Codemirror v-model="scriptContent" placeholder="在这里编写 Node.js ESM 激活脚本"
@@ -136,7 +142,7 @@
                                 </button>
                             </div>
                         </div>
-                        <div v-if="loadingProviderDoc" class="state-text">文档加载中…</div>
+                        <div v-if="loadingProviderDoc" class="admin-loading" role="status"><span class="admin-loading-spinner" />正在加载说明文档…</div>
                         <div v-else-if="providerDocError" class="state-text error">{{ providerDocError }}</div>
                         <MdPreview v-else editor-id="provider-doc-preview" :model-value="providerDocContent"
                             preview-theme="github" class="provider-doc-preview" />
@@ -330,18 +336,25 @@ async function selectProvider(uuid) {
     await loadCatalog()
 }
 
-async function resetAndSelectProvider(uuid) {
+async function resetAndSelectProvider(uuid, tab = 'catalog') {
     groups.value = []
     scriptContent.value = null
     activeTab.value = 'catalog'
     selectedUuid.value = uuid
     await loadCatalog()
+    if (tab === 'script') await applyTab('script')
 }
 
-watch(() => route.query.id, async (newId) => {
-    if (newId && myProviders.value.some(p => p.uuid === newId)) {
-        await resetAndSelectProvider(newId)
+watch(() => [route.query.id, route.query.tab], async ([newId, newTab]) => {
+    if (!myProviders.value.length) return
+    const nextId = myProviders.value.some(p => p.uuid === newId) ? newId : myProviders.value[0].uuid
+    const nextTab = newTab === 'script' ? 'script' : 'catalog'
+    if (newId !== nextId || newTab !== nextTab) {
+        await router.replace({ path: '/me/provideradmin', query: { id: nextId, tab: nextTab } })
+        return
     }
+    if (selectedUuid.value !== nextId) await resetAndSelectProvider(nextId, nextTab)
+    else if (activeTab.value !== nextTab) await applyTab(nextTab)
 })
 
 // ── 标签页 ────────────────────────────────────────────────────────────────────
@@ -351,12 +364,16 @@ const tabs = [
 ]
 const activeTab = ref('catalog')
 
-async function switchTab(key) {
+async function applyTab(key) {
     activeTab.value = key
     if (key === 'script') {
         if (scriptContent.value === null) await loadScript()
         if (!providerDocLoaded.value && !loadingProviderDoc.value) await loadProviderDoc()
     }
+}
+
+function switchTab(key) {
+    router.push({ path: '/me/provideradmin', query: { id: selectedUuid.value, tab: key } })
 }
 
 // ── 通用请求封装 ──────────────────────────────────────────────────────────────
@@ -777,15 +794,54 @@ function copyTextByTextarea(text) {
 onMounted(async () => {
     await loadMyProviders()
     const idParam = route.query.id
-    if (idParam && myProviders.value.some(p => p.uuid === idParam)) {
-        await resetAndSelectProvider(idParam)
-    } else if (myProviders.value.length > 0) {
-        await resetAndSelectProvider(myProviders.value[0].uuid)
+    if (!myProviders.value.length) return
+    const nextId = myProviders.value.some(p => p.uuid === idParam) ? idParam : myProviders.value[0].uuid
+    const nextTab = route.query.tab === 'script' ? 'script' : 'catalog'
+    if (idParam !== nextId || route.query.tab !== nextTab) {
+        await router.replace({ path: '/me/provideradmin', query: { id: nextId, tab: nextTab } })
     }
+    if (selectedUuid.value !== nextId) await resetAndSelectProvider(nextId, nextTab)
 })
 </script>
 
 <style scoped>
+.admin-path {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+}
+
+.admin-path a { color: var(--theme-color); text-decoration: none; }
+.admin-path strong { color: var(--text-color); font-weight: 600; }
+
+.admin-loading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px solid rgba(var(--theme-color-rgb), 0.16);
+    border-radius: 14px;
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-loading-spinner {
+    width: 15px;
+    height: 15px;
+    border: 2px solid rgba(var(--theme-color-rgb), 0.2);
+    border-top-color: var(--theme-color);
+    border-radius: 50%;
+    animation: admin-spin .75s linear infinite;
+}
+
+@keyframes admin-spin { to { transform: rotate(360deg); } }
+
 /* ── 无权限 ── */
 .no-permission-card {
     max-width: 480px;
@@ -857,6 +913,10 @@ onMounted(async () => {
     gap: 8px;
     margin-bottom: 20px;
     flex-wrap: wrap;
+    padding: 6px;
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    background: rgba(var(--card-background-rgb), 0.55);
 }
 
 .tab-btn {
@@ -875,6 +935,7 @@ onMounted(async () => {
     background: var(--theme-color);
     color: #fff;
     border-color: var(--theme-color);
+    box-shadow: 0 4px 12px rgba(var(--theme-color-rgb), 0.2);
 }
 
 .tab-btn:hover:not(.active) {

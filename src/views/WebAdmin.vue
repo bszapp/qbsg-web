@@ -12,12 +12,21 @@
             </div>
 
             <template v-else>
+                <nav class="admin-path" aria-label="当前位置">
+                    <RouterLink to="/me">我的</RouterLink><span>/</span>
+                    <strong>网站管理</strong><span>/</span>
+                    <strong>{{ currentCategoryLabel }}</strong>
+                    <template v-if="currentSubLabel"><span>/</span><strong>{{ currentSubLabel }}</strong></template>
+                </nav>
                 <!-- 主分类 Tab -->
-                <div class="tab-bar">
+                <div class="tab-bar" aria-label="网站管理分类">
                     <button v-for="cat in categories" :key="cat.k" :class="['tab-btn', { active: mainTab === cat.k }]"
-                        @click="switchMain(cat.k)">
+                        :aria-current="mainTab === cat.k ? 'page' : undefined" @click="switchMain(cat.k)">
                         {{ cat.label }}
                     </button>
+                </div>
+                <div v-if="loadingCount" class="admin-loading" role="status" aria-live="polite">
+                    <span class="admin-loading-spinner" />正在加载{{ currentCategoryLabel }}数据…
                 </div>
 
                 <!-- ── 结算管理 ── -->
@@ -378,11 +387,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, reactive } from 'vue'
+import { ref, computed, reactive, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
+import { postJson } from '../services/api.js'
 import WebAdminTemplateReviewPanel from '../components/WebAdminTemplateReviewPanel.vue'
 
 const { state } = useAuth()
+const route = useRoute()
+const router = useRouter()
 const token = computed(() => state.token)
 const isAdmin = computed(() => state.user?.is_admin === true)
 
@@ -398,26 +411,29 @@ const categories = [
     { k: 'review', label: '社区审核' },
 ]
 
+const billingTabs = ['history', 'unsettled']
+const userTabs = ['orders', 'list', 'cache', 'records']
+const currentCategoryLabel = computed(() => categories.find(cat => cat.k === mainTab.value)?.label || '')
+const currentSubLabel = computed(() => mainTab.value === 'billing'
+    ? ({ history: '结算列表', unsettled: '未结算清单' })[billingTab.value]
+    : mainTab.value === 'users'
+        ? ({ orders: '充值订单', list: '用户列表', cache: '激活缓存', records: '激活记录' })[usersTab.value]
+        : '')
+
+function navigateAdmin(section, tab) {
+    router.push({ path: '/me/webadmin', query: { section, ...(tab ? { tab } : {}) } })
+}
+
 function switchMain(k) {
-    mainTab.value = k
-    if (k === 'billing') { ensureProviders(); switchBilling(billingTab.value) }
-    else if (k === 'users') switchUsers(usersTab.value)
-    else if (k === 'providers') loadProviders()
-    else if (k === 'review') return
+    navigateAdmin(k, k === 'billing' ? billingTab.value : k === 'users' ? usersTab.value : '')
 }
 
 function switchBilling(sub) {
-    billingTab.value = sub
-    if (sub === 'history') loadBillingHistory()
-    else loadUnsettled()
+    navigateAdmin('billing', sub)
 }
 
 function switchUsers(sub) {
-    usersTab.value = sub
-    if (sub === 'orders') loadOrders()
-    else if (sub === 'list') loadUsers()
-    else if (sub === 'cache') loadCache()
-    else if (sub === 'records') loadRecords()
+    navigateAdmin('users', sub)
 }
 
 // ── Toast ──────────────────────────────────────────────────────────────────
@@ -429,14 +445,15 @@ function toast(text, type = 'info') {
 }
 
 const API = (path) => `/api/admin${path}`
+const loadingCount = ref(0)
 
 async function api(path, body = {}) {
-    const res = await fetch(API(path), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: token.value, ...body }),
-    })
-    return res.json()
+    loadingCount.value++
+    try {
+        return await postJson(API(path), { token: token.value, ...body })
+    } finally {
+        loadingCount.value--
+    }
 }
 
 function fmt(ts) {
@@ -674,12 +691,34 @@ async function unbindUser(uuid, user_id) {
 }
 
 // ── 初始化 ─────────────────────────────────────────────────────────────────
-onMounted(() => {
-    if (isAdmin.value) {
-        loadProviders()      // 预加载提供商，用于名称显示
-        loadBillingHistory() // 默认显示结算列表
+watch(() => [route.query.section, route.query.tab, isAdmin.value], ([section, tab, allowed]) => {
+    if (!allowed) return
+    const nextSection = categories.some(cat => cat.k === section) ? section : 'billing'
+    const nextTab = nextSection === 'billing'
+        ? (billingTabs.includes(tab) ? tab : 'history')
+        : nextSection === 'users'
+            ? (userTabs.includes(tab) ? tab : 'orders')
+            : ''
+    if (section !== nextSection || (tab || '') !== nextTab) {
+        router.replace({ path: '/me/webadmin', query: { section: nextSection, ...(nextTab ? { tab: nextTab } : {}) } })
+        return
     }
-})
+    mainTab.value = nextSection
+    if (nextSection === 'billing') billingTab.value = nextTab
+    if (nextSection === 'users') usersTab.value = nextTab
+    if (mainTab.value === 'billing') {
+        ensureProviders()
+        if (billingTab.value === 'history') loadBillingHistory()
+        else loadUnsettled()
+    } else if (mainTab.value === 'users') {
+        if (usersTab.value === 'orders') loadOrders()
+        else if (usersTab.value === 'list') loadUsers()
+        else if (usersTab.value === 'cache') loadCache()
+        else loadRecords()
+    } else if (mainTab.value === 'providers') {
+        loadProviders()
+    }
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -687,6 +726,42 @@ onMounted(() => {
 .webadmin-root {
     display: contents;
 }
+
+.admin-path {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+}
+
+.admin-path a { color: var(--theme-color); text-decoration: none; }
+.admin-path strong { color: var(--text-color); font-weight: 600; }
+
+.admin-loading {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 38px;
+    padding: 0 14px;
+    border-radius: 12px;
+    background: rgba(var(--theme-color-rgb), 0.08);
+    color: var(--theme-color);
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.admin-loading-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(var(--theme-color-rgb), 0.22);
+    border-top-color: var(--theme-color);
+    border-radius: 50%;
+    animation: admin-spin .75s linear infinite;
+}
+
+@keyframes admin-spin { to { transform: rotate(360deg); } }
 
 /* ── 无权限 ── */
 .no-permission-card {
@@ -722,6 +797,10 @@ onMounted(() => {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
+    padding: 6px;
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    background: rgba(var(--card-background-rgb), 0.55);
 }
 
 .tab-btn {
@@ -740,6 +819,7 @@ onMounted(() => {
     background: var(--theme-color);
     color: #fff;
     border-color: var(--theme-color);
+    box-shadow: 0 4px 12px rgba(var(--theme-color-rgb), 0.2);
 }
 
 .tab-btn:hover:not(.active) {
@@ -752,6 +832,8 @@ onMounted(() => {
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    padding: 4px 0 8px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .sub-btn {

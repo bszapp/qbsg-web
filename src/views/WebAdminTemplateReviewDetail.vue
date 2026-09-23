@@ -5,16 +5,24 @@
         <div class="no-perm-icon">⛔</div>
         <h2>无访问权限</h2>
         <p>当前账号没有网站管理员权限。</p>
-        <button class="primary-button" @click="router.push('/me/webadmin')">返回网站管理</button>
+        <button class="primary-button" @click="router.push(reviewListPath)">返回网站管理</button>
       </div>
 
       <template v-else>
+        <nav class="admin-path" aria-label="当前位置">
+          <RouterLink to="/me">我的</RouterLink><span>/</span>
+          <RouterLink :to="reviewListPath">网站管理</RouterLink><span>/</span>
+          <RouterLink :to="reviewListPath">社区审核</RouterLink><span>/</span>
+          <strong>{{ item?.name || communityId }}</strong>
+        </nav>
         <div class="detail-topbar">
-          <button class="secondary-button small-btn" @click="router.push('/me/webadmin')">返回审核列表</button>
+          <button class="secondary-button small-btn" @click="router.push(reviewListPath)">返回审核列表</button>
           <button class="secondary-button small-btn" @click="loadDetail" :disabled="loading">
             {{ loading ? '刷新中...' : '刷新详情' }}
           </button>
         </div>
+
+        <div v-if="loading && item" class="detail-loading" role="status">正在刷新审核详情…</div>
 
         <div v-if="loading && !item" class="callout-box">正在加载审核详情...</div>
         <div v-else-if="loadError" class="callout-box detail-error">{{ loadError }}</div>
@@ -62,6 +70,10 @@
                 <strong class="meta-value">{{ fmt(item.reviewed_at) }}</strong>
               </div>
               <div class="meta-card">
+                <span class="meta-label">审核者</span>
+                <strong class="meta-value">{{ item.reviewer_uid === 0 ? '未知' : `UID ${item.reviewer_uid}` }}</strong>
+              </div>
+              <div class="meta-card">
                 <span class="meta-label">上架时间</span>
                 <strong class="meta-value">{{ fmt(item.published_at) }}</strong>
               </div>
@@ -83,7 +95,7 @@
               </div>
             </div>
             <div class="audit-image-wrap">
-              <AdminTemplateMediaImage :token="token" :uid="item.uid" :project-id="item.project_id" kind="audit"
+              <AdminTemplateMediaImage kind="audit" :url="item.audit_temp_url"
                 fit="contain" :available="item.audit_available" :alt="`${item.name || '项目'} 审核图`" />
             </div>
           </section>
@@ -140,6 +152,7 @@ const { state, handleAuthFailure } = useAuth()
 const token = computed(() => state.token)
 const isAdmin = computed(() => state.user?.is_admin === true)
 const communityId = computed(() => String(route.params.communityId || ''))
+const reviewListPath = '/me/webadmin?section=review'
 
 const item = ref(null)
 const loading = ref(false)
@@ -260,7 +273,7 @@ async function rejectItem() {
 
     if (data.type === 'success') {
       showToast(data.message || '已打回', 'success', 3200)
-      router.replace('/me/webadmin')
+      router.replace(reviewListPath)
       return
     }
 
@@ -281,6 +294,27 @@ loadDetail()
 </script>
 
 <style scoped>
+.admin-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: var(--secondary-text-color);
+  font-size: 13px;
+}
+
+.admin-path a { color: var(--theme-color); text-decoration: none; }
+.admin-path strong { color: var(--text-color); font-weight: 600; }
+
+.detail-loading {
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(var(--theme-color-rgb), 0.08);
+  color: var(--theme-color);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .detail-stack {
   gap: 16px;
 }

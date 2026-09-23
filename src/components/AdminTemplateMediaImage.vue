@@ -1,29 +1,20 @@
 <template>
   <div class="admin-media" :class="[`fit-${fit}`, src ? 'has-image' : '']">
-    <img v-if="src" :src="src" :alt="alt" class="admin-media-img" />
-    <div v-else class="admin-media-state">
+    <img v-if="src" :src="src" :alt="alt" class="admin-media-img" @load="loading = false" @error="onImageError" />
+    <div v-if="loading || !src" class="admin-media-state" :class="{ 'admin-media-state-overlay': !!src }">
       {{ stateText }}
     </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
-import { normalizeMessage } from '../services/api.js'
-import { fetchAdminTemplateMediaObjectUrl } from '../services/adminTemplateReview.js'
+import { computed, ref, watch } from 'vue'
+import { buildApiUrl } from '../config/app.js'
 
 const props = defineProps({
-  token: {
+  url: {
     type: String,
     default: '',
-  },
-  uid: {
-    type: [Number, String],
-    required: true,
-  },
-  projectId: {
-    type: String,
-    required: true,
   },
   kind: {
     type: String,
@@ -47,45 +38,24 @@ const src = ref('')
 const loading = ref(false)
 const errorMessage = ref('')
 
-function revokeCurrentUrl() {
-  if (src.value) {
-    URL.revokeObjectURL(src.value)
-    src.value = ''
-  }
+function onImageError() {
+  src.value = ''
+  loading.value = false
+  errorMessage.value = '图片加载失败，请刷新页面'
 }
 
-async function loadImage() {
-  revokeCurrentUrl()
+function loadImage() {
+  src.value = ''
   errorMessage.value = ''
+  loading.value = false
 
-  if (!props.available) {
+  if (!props.available) return
+  if (!props.url) {
+    errorMessage.value = '图片生成失败，请刷新页面'
     return
   }
-
-  if (!props.token || !props.projectId) {
-    errorMessage.value = '缺少图片参数'
-    return
-  }
-
   loading.value = true
-
-  try {
-    const result = await fetchAdminTemplateMediaObjectUrl(props.token, {
-      uid: props.uid,
-      project_id: props.projectId,
-      kind: props.kind,
-    })
-
-    if (result.ok) {
-      src.value = result.url
-    } else {
-      errorMessage.value = normalizeMessage(result.data, '图片加载失败')
-    }
-  } catch (error) {
-    errorMessage.value = error.message || '图片加载失败'
-  } finally {
-    loading.value = false
-  }
+  src.value = buildApiUrl(props.url)
 }
 
 const stateText = computed(() => {
@@ -99,18 +69,15 @@ const stateText = computed(() => {
 })
 
 watch(
-  () => [props.token, props.uid, props.projectId, props.kind, props.available],
+  () => [props.url, props.available],
   loadImage,
   { immediate: true }
 )
-
-onBeforeUnmount(() => {
-  revokeCurrentUrl()
-})
 </script>
 
 <style scoped>
 .admin-media {
+  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
@@ -140,5 +107,14 @@ onBeforeUnmount(() => {
   color: var(--secondary-text-color);
   font-size: 13px;
   line-height: 1.6;
+}
+
+.admin-media-state-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(var(--card-background-rgb), 0.85);
 }
 </style>

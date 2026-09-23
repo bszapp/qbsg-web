@@ -125,6 +125,7 @@
             </div>
             <div v-if="showAdminSubmenu" class="submenu">
               <div v-for="p in (state.user?.providers ?? [])" :key="p.uuid" class="menu-item submenu-item"
+                :class="{ 'menu-item-active': route.path.startsWith('/me/provider') && route.query.id === p.uuid }"
                 @click="goToProviderAdmin(p.uuid)">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
@@ -133,7 +134,8 @@
                 </svg>
                 <span>{{ p.name }}</span>
               </div>
-              <div v-if="state.user?.is_admin" class="menu-item submenu-item" @click="goToWebAdmin">
+              <div v-if="state.user?.is_admin" class="menu-item submenu-item"
+                :class="{ 'menu-item-active': route.path.startsWith('/me/webadmin') }" @click="goToWebAdmin">
                 <svg class="menu-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                   stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="12" cy="12" r="10" />
@@ -318,6 +320,11 @@ const {
 
 // 管理菜单展开状态
 const showAdminSubmenu = ref(false)
+watch(() => route.path, path => {
+  if (path.startsWith('/me/webadmin') || path.startsWith('/me/provider')) {
+    showAdminSubmenu.value = true
+  }
+}, { immediate: true })
 
 const hasPreviousInternalRoute = ref(false)
 const previousRoute = ref(null)
@@ -484,7 +491,7 @@ function goToSettings() {
 
 function goToProviderAdmin(uuid) {
   closeDropdown()
-  router.push('/me/provideradmin?id=' + uuid)
+  router.push({ path: '/me/provideradmin', query: { id: uuid, tab: 'catalog' } })
 }
 
 function goToWebAdmin() {
@@ -659,6 +666,13 @@ onUnmounted(() => {
 .submenu-item {
   padding-left: 28px !important;
   font-size: 13px;
+}
+
+.submenu-item.menu-item-active {
+  color: var(--theme-color);
+  background: rgba(var(--theme-color-rgb), 0.12);
+  font-weight: 700;
+  border-radius: 8px;
 }
 
 .menu-caret.open {

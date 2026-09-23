@@ -16,10 +16,12 @@
       </div>
     </div>
 
-    <div v-if="loading && !items.length" class="callout-box">正在加载审核列表...</div>
+    <div v-if="loading" class="review-loading" role="status" aria-live="polite">
+      <span class="review-loading-spinner" />{{ items.length ? '正在刷新审核列表…' : '正在加载审核列表…' }}
+    </div>
     <div v-else-if="loadError" class="callout-box review-error">{{ loadError }}</div>
 
-    <template v-else>
+    <template v-if="!loadError && items.length">
       <section class="review-section">
         <div class="review-section-head">
           <h3 class="review-section-title">审核中</h3>
@@ -29,8 +31,8 @@
         <div v-else class="review-grid">
           <article v-for="item in reviewingItems" :key="item.community_id" class="review-card">
             <div class="review-card-preview">
-              <AdminTemplateMediaImage :token="token" :uid="item.uid" :project-id="item.project_id" kind="preview"
-                :available="item.preview_available" :alt="item.name || '项目浏览图'" />
+              <AdminTemplateMediaImage kind="preview"
+                :url="item.preview_temp_url" :available="item.preview_available" :alt="item.name || '项目浏览图'" />
             </div>
             <div class="review-card-body">
               <div class="review-card-badges">
@@ -74,8 +76,8 @@
         <div v-else class="review-grid">
           <article v-for="item in publishedItems" :key="item.community_id" class="review-card">
             <div class="review-card-preview">
-              <AdminTemplateMediaImage :token="token" :uid="item.uid" :project-id="item.project_id" kind="preview"
-                :available="item.preview_available" :alt="item.name || '项目浏览图'" />
+              <AdminTemplateMediaImage kind="preview"
+                :url="item.preview_temp_url" :available="item.preview_available" :alt="item.name || '项目浏览图'" />
             </div>
             <div class="review-card-body">
               <div class="review-card-badges">
@@ -101,6 +103,10 @@
                   <dt>上架时间</dt>
                   <dd>{{ fmt(item.published_at) }}</dd>
                 </div>
+                <div>
+                  <dt>审核者</dt>
+                  <dd>{{ item.reviewer_uid === 0 ? '未知' : `UID ${item.reviewer_uid}` }}</dd>
+                </div>
               </dl>
             </div>
             <div class="review-card-footer">
@@ -110,6 +116,7 @@
         </div>
       </section>
     </template>
+    <div v-else-if="!loading && !loadError" class="state-text">暂无审核项目</div>
   </div>
 </template>
 
@@ -175,6 +182,29 @@ onMounted(loadItems)
   flex-direction: column;
   gap: 16px;
 }
+
+.review-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: rgba(var(--theme-color-rgb), 0.08);
+  color: var(--theme-color);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.review-loading-spinner {
+  width: 15px;
+  height: 15px;
+  border: 2px solid rgba(var(--theme-color-rgb), 0.2);
+  border-top-color: var(--theme-color);
+  border-radius: 50%;
+  animation: review-spin .75s linear infinite;
+}
+
+@keyframes review-spin { to { transform: rotate(360deg); } }
 
 .review-intro-card {
   gap: 14px;
