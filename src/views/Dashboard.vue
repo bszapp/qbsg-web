@@ -94,33 +94,25 @@
 
       <section class="dash-section">
         <!-- 联系卡片 -->
-        <div class="contact-row">
-          <div class="contact-card contact-card--qq">
-            <a class="contact-card-top"
-              href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=ITXocacD2fzUvPnFWuNBYzZgVBqHXe4P&authKey=AePvKvyHVWKz1H7IQVne2v6OWVojgirV8Z2HOFEYNwS%2F%2BGD1g88VqfzhNCEwS2Hs&noverify=0&group_code=280372025"
-              target="_blank">
-              <div class="contact-card-icon"><i class="fa-brands fa-qq"></i></div>
-              <div class="contact-card-text">
-                <div class="contact-card-label">QQ 交流群</div>
-                <div class="contact-card-desc">进群获取技术支持 &amp; 资源分享</div>
-              </div>
-              <i class="fa-solid fa-chevron-right contact-card-arrow"></i> <!-- 新增 -->
-            </a>
-            <div class="contact-qr-wrap">
-              <img src="/images/qq.jpg" alt="QQ群二维码" class="contact-qr" />
+        <div class="contact-card contact-card--qq">
+          <div class="contact-card-main">
+            <div class="contact-card-icon"><i class="fa-brands fa-qq"></i></div>
+            <div class="contact-card-text">
+              <div class="contact-card-label">QQ 交流群</div>
+              <p class="contact-card-desc">进群获取技术支持与资源分享</p>
+              <a class="contact-card-link"
+                href="http://qm.qq.com/cgi-bin/qm/qr?_wv=1027&k=ITXocacD2fzUvPnFWuNBYzZgVBqHXe4P&authKey=AePvKvyHVWKz1H7IQVne2v6OWVojgirV8Z2HOFEYNwS%2F%2BGD1g88VqfzhNCEwS2Hs&noverify=0&group_code=280372025"
+                target="_blank" rel="noopener noreferrer">
+                点击加入群聊
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </a>
             </div>
           </div>
-          <div class="contact-card contact-card--wechat">
-            <a class="contact-card-top">
-              <div class="contact-card-icon"><i class="fa-brands fa-weixin"></i></div>
-              <div class="contact-card-text">
-                <div class="contact-card-label">微信联系</div>
-                <div class="contact-card-desc">售前咨询 &amp; 激活服务</div>
-              </div>
-            </a>
-            <div class="contact-qr-wrap">
-              <img src="/images/wechat.jpg" alt="微信二维码" class="contact-qr" />
+          <div class="contact-qr-wrap">
+            <div class="contact-qr-frame">
+              <img src="/images/qq.jpg" alt="QQ群二维码" class="contact-qr" />
             </div>
+            <span class="contact-qr-caption">扫码加入群聊</span>
           </div>
         </div>
       </section>
@@ -643,20 +635,15 @@ onMounted(() => {
 }
 
 /* ===== Contact ===== */
-.contact-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
 .contact-card {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 260px);
+  align-items: center;
+  gap: 36px;
+  padding: 32px 40px;
   border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background: rgba(var(--text-color-rgb), 0.02);
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.07), rgba(var(--text-color-rgb), 0.02));
   transition: all 0.2s;
 }
 
@@ -665,39 +652,21 @@ onMounted(() => {
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.07);
 }
 
-.contact-card-top {
+.contact-card-main {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  cursor: pointer;
-  justify-content: space-between;
-  /* 新增：把箭头顶到最右 */
-}
-
-.contact-card-arrow {
-  font-size: 13px;
-  color: var(--secondary-text-color);
-  flex-shrink: 0;
-  opacity: 0.5;
-  transition: opacity 0.2s, transform 0.2s;
-  margin-right: 8px;
-}
-
-.contact-card-top:hover .contact-card-arrow {
-  opacity: 1;
-  transform: translateX(2px);
-  /* 悬停时轻微右移，增强交互感 */
+  align-items: flex-start;
+  gap: 16px;
+  min-width: 0;
 }
 
 .contact-card-icon {
-  width: 38px;
-  height: 38px;
-  border-radius: 10px;
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 28px;
   flex-shrink: 0;
 }
 
@@ -706,50 +675,78 @@ onMounted(() => {
   color: #128cdc;
 }
 
-.contact-card--wechat .contact-card-icon {
-  background: rgba(7, 193, 96, 0.12);
-  color: #07c160;
-}
-
-.contact-card-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  cursor: pointer;
-}
-
 .contact-card-text {
   display: flex;
   flex-direction: column;
-  gap: 3px;
   flex: 1;
+  min-width: 0;
 }
 
 .contact-card-label {
-  font-size: 15px;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-color);
 }
 
 .contact-card-desc {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--secondary-text-color);
-  line-height: 1.5;
-  margin-top: -4px;
+  line-height: 1.6;
+  margin: 10px 0 22px;
+}
+
+.contact-card-link {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 9px;
+  padding: 11px 16px;
+  border-radius: 9px;
+  background: var(--theme-color);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.contact-card-link:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .contact-qr-wrap {
   width: 100%;
+  max-width: 260px;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  background: var(--card-background);
+  text-align: center;
+}
+
+.contact-qr-frame {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f1f1f3;
 }
 
 .contact-qr {
   width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 10px;
+  height: 100%;
   object-fit: cover;
-  border: 1px solid var(--border-color);
   display: block;
+  transform: scale(1.38);
+}
+
+.contact-qr-caption {
+  display: block;
+  margin-top: 10px;
+  color: var(--secondary-text-color);
+  font-size: 12px;
 }
 
 /* ===== Responsive ===== */
@@ -769,11 +766,21 @@ onMounted(() => {
   .other-platforms {
     grid-template-columns: 1fr 1fr;
   }
+
+  .contact-card {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 28px;
+  }
+
+  .contact-card-main {
+    width: 100%;
+  }
 }
 
 @media (max-width: 480px) {
-  .contact-row {
-    grid-template-columns: 1fr;
+  .contact-card {
+    padding: 20px;
   }
 }
 </style>
