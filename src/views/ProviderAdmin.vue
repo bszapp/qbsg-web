@@ -6,7 +6,7 @@
 
         <!-- 无提供商权限 -->
         <div v-else-if="myProviders.length === 0" class="no-permission-card">
-            <div class="no-perm-icon">🔒</div>
+            <div class="no-perm-icon" aria-hidden="true"><i class="fa-solid fa-lock"></i></div>
             <h2>您不是管理员</h2>
             <p>当前账号未绑定任何提供商权限，无法访问此页面。</p>
             <button class="primary-button" @click="$router.push('/')">返回主页</button>
@@ -46,65 +46,120 @@
             <!-- ── 固件目录 ── -->
             <div v-if="activeTab === 'catalog'">
                 <div class="catalog-topbar">
-                    <div>
-                        <h2 class="section-title">固件目录</h2>
-                        <p class="section-desc">点击分组头的按钮管理分组和固件条目。</p>
+                    <div class="catalog-topbar-info">
+                        <h2 class="section-title">
+                            <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>固件目录
+                        </h2>
+                        <p class="section-desc">共 {{ groups.length }} 个分组 · {{ totalFirmwareCount }} 个固件，点击分组头上的按钮进行管理。</p>
                     </div>
-                    <button class="primary-button small-btn" @click="openAddGroupModal">＋ 创建新分组</button>
+                    <button class="primary-button small-btn" @click="openAddGroupModal">
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i>创建新分组
+                    </button>
                 </div>
 
                 <div v-if="loadingCatalog" class="admin-loading" role="status"><span class="admin-loading-spinner" />正在加载固件目录…</div>
-                <div v-else-if="groups.length === 0" class="state-text">暂无分组，点击右上角「创建新分组」</div>
 
-                <div v-for="(group, gi) in groups" v-show="!loadingCatalog" :key="group.id ?? ('new-' + gi)" class="group-block">
-                    <!-- 分组头 -->
-                    <div class="group-header">
-                        <div class="group-meta">
-                            <strong class="group-label">{{ group.label }}</strong>
-                            <div class="group-tags">
-                                <span class="tag tag-id">激活编号: {{ group.activation_id || '（无）' }}</span>
-                                <span class="tag tag-pts">{{ group.points }} 积分</span>
-                                <span class="tag tag-sort">排序: {{ group.sort_order }}</span>
-                            </div>
-                        </div>
-                        <div class="group-actions">
-                            <button class="action-btn" @click="openAddFirmwareModal(gi)">＋ 新增固件</button>
-                            <button class="icon-btn" @click="openGroupSettingsModal(gi)" title="分组设置">⚙️</button>
-                            <button class="icon-btn danger" @click="deleteGroup(gi)" title="删除分组">🗑️</button>
-                        </div>
-                    </div>
+                <div v-else-if="groups.length === 0" class="catalog-empty">
+                    <div class="catalog-empty-icon" aria-hidden="true"><i class="fa-solid fa-folder-open"></i></div>
+                    <p class="catalog-empty-title">还没有任何固件分组</p>
+                    <p class="catalog-empty-desc">分组用于归类固件并配置激活定价，先创建一个吧。</p>
+                    <button class="primary-button small-btn" @click="openAddGroupModal">
+                        <i class="fa-solid fa-plus" aria-hidden="true"></i>创建第一个分组
+                    </button>
+                </div>
 
-                    <!-- 固件列表 -->
-                    <div class="firmware-list">
-                        <div v-if="group.firmwares.length === 0" class="state-text small">
-                            此分组暂无固件，点击分组头的「＋ 新增固件」添加
-                        </div>
-                        <div v-for="(fw, fi) in group.firmwares" :key="fw.firmware_id + '-' + fi" class="fw-item">
-                            <div class="fw-thumb">
-                                <img v-if="fw.image_display_url" :src="resolveDisplayUrl(fw.image_display_url)"
-                                    class="fw-img" />
-                                <div v-else class="fw-img-placeholder">📦</div>
-                            </div>
-                            <div class="fw-info">
-                                <div class="fw-id mono">{{ fw.firmware_id }}</div>
-                                <div class="fw-name">{{ fw.name || '（未命名）' }}</div>
-                                <div v-if="fw.description" class="fw-desc">{{ fw.description }}</div>
-                                <div class="fw-tags">
-                                    <span v-if="fw.screen_size" class="tag tag-sort">{{ fw.screen_size }}</span>
-                                    <span class="tag" :class="fw.image_filename ? 'tag-pts' : 'tag-empty'">
-                                        封面 {{ fw.image_filename ? '✓' : '未上传' }}
-                                    </span>
-                                    <span class="tag" :class="fw.download_filename ? 'tag-pts' : 'tag-empty'">
-                                        固件 {{ fw.download_filename ? '✓' : '未上传' }}
-                                    </span>
+                <div v-else class="group-stack">
+                    <section v-for="(group, gi) in groups" :key="group.id ?? ('new-' + gi)" class="group-block" :data-gi="gi">
+                        <!-- 分组头 -->
+                        <header class="group-header">
+                            <div class="group-identity">
+                                <span class="group-avatar" aria-hidden="true">{{ groupInitial(gi) }}</span>
+                                <div class="group-meta">
+                                    <div class="group-title-row">
+                                        <strong class="group-label">{{ group.label }}</strong>
+                                        <span class="tag tag-count">
+                                            <i class="fa-solid fa-microchip" aria-hidden="true"></i>{{ group.firmwares.length }} 个固件
+                                        </span>
+                                    </div>
+                                    <div class="group-tags">
+                                        <span class="tag tag-id"><i class="fa-solid fa-key" aria-hidden="true"></i>激活编号 {{ group.activation_id || '未设置' }}</span>
+                                        <span class="tag tag-pts"><i class="fa-solid fa-coins" aria-hidden="true"></i>{{ group.points }} 积分</span>
+                                        <span class="tag tag-sort"><i class="fa-solid fa-arrow-down-short-wide" aria-hidden="true"></i>排序 {{ group.sort_order }}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="fw-actions">
-                                <button class="icon-btn" @click="openEditFirmwareModal(gi, fi)" title="编辑">✏️</button>
-                                <button class="icon-btn danger" @click="deleteFirmware(gi, fi)" title="删除">🗑️</button>
+                            <div class="group-actions">
+                                <button class="action-btn" @click="openAddFirmwareModal(gi)">
+                                    <i class="fa-solid fa-plus" aria-hidden="true"></i>新增固件
+                                </button>
+                                <button class="icon-btn" @click="openGroupSettingsModal(gi)" title="分组设置" aria-label="分组设置">
+                                    <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+                                </button>
+                                <button class="icon-btn danger" @click="deleteGroup(gi)" title="删除分组" aria-label="删除分组">
+                                    <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                </button>
+                            </div>
+                        </header>
+
+                        <!-- 固件列表 -->
+                        <div class="firmware-list">
+                            <div v-if="group.firmwares.length === 0 && !slotEnd(gi)" class="fw-list-empty">
+                                <i class="fa-regular fa-folder-open" aria-hidden="true"></i>
+                                此分组暂无固件，点击右上角「新增固件」或从其他分组拖入固件
+                            </div>
+                            <template v-for="(fw, fi) in group.firmwares" :key="fw.firmware_id + '-' + fi">
+                                <div v-if="slotBefore(gi, fi)" class="fw-drop-slot" :data-gi="gi" :data-ins="fi" aria-hidden="true">
+                                    <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>放置到此处
+                                </div>
+                                <div class="fw-item"
+                                    :class="{ 'fw-item-drag-src': drag && drag.sgi === gi && drag.sfi === fi, 'fw-item-flash': flashFwId === fw.firmware_id && !drag }"
+                                    :data-gi="gi" :data-fi="fi">
+                                    <button class="drag-handle" type="button"
+                                        title="按住拖动，调整固件顺序（可跨分组）"
+                                        aria-label="按住拖动，调整固件顺序"
+                                        @pointerdown="onHandleDown($event, gi, fi)"
+                                        @contextmenu.prevent>
+                                        <i class="fa-solid fa-grip-vertical" aria-hidden="true"></i>
+                                    </button>
+                                    <div class="fw-thumb">
+                                        <img v-if="fw.image_display_url" :src="resolveDisplayUrl(fw.image_display_url)"
+                                            class="fw-img" :alt="fw.name || fw.firmware_id" />
+                                        <div v-else class="fw-img-placeholder" aria-hidden="true"><i class="fa-solid fa-microchip"></i></div>
+                                    </div>
+                                    <div class="fw-info">
+                                        <div class="fw-title-row">
+                                            <span class="fw-name">{{ fw.name || '（未命名）' }}</span>
+                                            <span class="fw-id mono">{{ fw.firmware_id }}</span>
+                                        </div>
+                                        <div v-if="fw.description" class="fw-desc">{{ fw.description }}</div>
+                                        <div class="fw-tags">
+                                            <span v-if="fw.screen_size" class="tag tag-sort">
+                                                <i class="fa-solid fa-mobile-screen-button" aria-hidden="true"></i>{{ fw.screen_size }}
+                                            </span>
+                                            <span class="tag" :class="fw.image_filename ? 'tag-ok' : 'tag-empty'">
+                                                <i class="fa-solid" :class="fw.image_filename ? 'fa-circle-check' : 'fa-circle-xmark'" aria-hidden="true"></i>封面{{ fw.image_filename ? '已上传' : '未上传' }}
+                                            </span>
+                                            <span class="tag" :class="fw.download_filename ? 'tag-ok' : 'tag-empty'">
+                                                <i class="fa-solid" :class="fw.download_filename ? 'fa-circle-check' : 'fa-circle-xmark'" aria-hidden="true"></i>固件{{ fw.download_filename ? '已上传' : '未上传' }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="fw-actions">
+                                        <button class="icon-btn" @click="openEditFirmwareModal(gi, fi)" title="编辑" aria-label="编辑固件">
+                                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                                        </button>
+                                        <button class="icon-btn danger" @click="deleteFirmware(gi, fi)" title="删除" aria-label="删除固件">
+                                            <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </template>
+                            <div v-if="slotEnd(gi)" class="fw-drop-slot" :data-gi="gi"
+                                :data-ins="group.firmwares.length" aria-hidden="true">
+                                <i class="fa-solid fa-arrow-down" aria-hidden="true"></i>放置到此处
                             </div>
                         </div>
-                    </div>
+                    </section>
                 </div>
             </div>
 
@@ -166,8 +221,13 @@
                 <div v-if="showGroupModal" class="modal-overlay">
                     <div class="modal-container">
                         <div class="modal-header">
-                            <h2 class="modal-title">{{ editingGroupIdx === null ? '创建新分组' : '分组设置' }}</h2>
-                            <button class="popup-close-btn" @click="closeGroupModal">✕</button>
+                            <h2 class="modal-title">
+                                <i class="fa-solid" :class="editingGroupIdx === null ? 'fa-folder-plus' : 'fa-sliders'" aria-hidden="true"></i>
+                                {{ editingGroupIdx === null ? '创建新分组' : '分组设置' }}
+                            </h2>
+                            <button class="popup-close-btn" @click="closeGroupModal" aria-label="关闭">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
                         </div>
                         <div class="modal-body">
                             <div class="field-grid">
@@ -194,7 +254,7 @@
                         <div class="modal-footer">
                             <button class="secondary-button" @click="closeGroupModal">取消</button>
                             <button class="primary-button" @click="saveGroupModal" :disabled="saving">
-                                {{ saving ? '保存中…' : '确认保存' }}
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ saving ? '保存中…' : '确认保存' }}
                             </button>
                         </div>
                     </div>
@@ -208,8 +268,13 @@
                 <div v-if="showFirmwareModal" class="modal-overlay">
                     <div class="modal-container large-modal">
                         <div class="modal-header">
-                            <h2 class="modal-title">{{ editingFirmwareIdx === null ? '新增固件' : '编辑固件' }}</h2>
-                            <button class="popup-close-btn" @click="closeFirmwareModal">✕</button>
+                            <h2 class="modal-title">
+                                <i class="fa-solid" :class="editingFirmwareIdx === null ? 'fa-file-circle-plus' : 'fa-file-pen'" aria-hidden="true"></i>
+                                {{ editingFirmwareIdx === null ? '新增固件' : '编辑固件' }}
+                            </h2>
+                            <button class="popup-close-btn" @click="closeFirmwareModal" aria-label="关闭">
+                                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+                            </button>
                         </div>
                         <div class="modal-body">
                             <div class="field-grid">
@@ -234,50 +299,75 @@
                             <!-- 封面图上传 -->
                             <div class="upload-section">
                                 <div class="upload-section-header">
-                                    <span class="field-label">封面图</span>
+                                    <span class="field-label"><i class="fa-regular fa-image" aria-hidden="true"></i>封面图</span>
                                     <div class="upload-btn-row">
                                         <button type="button" class="upload-btn" :disabled="!!uploading"
                                             @click="triggerImageUpload">
-                                            📁 {{ uploading === 'image' ? '上传中…' : '选择图片' }}
+                                            <i class="fa-solid fa-image" aria-hidden="true"></i>{{ uploading === 'image' ? '上传中…' : '选择图片' }}
                                         </button>
                                         <button v-if="fwForm.image_filename" type="button" class="clear-file-btn"
-                                            @click="clearImage">✕ 清除</button>
+                                            @click="clearImage">
+                                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>清除
+                                        </button>
                                     </div>
                                 </div>
                                 <div v-if="fwForm.image_display_url" class="image-preview-wrap">
-                                    <img :src="resolveDisplayUrl(fwForm.image_display_url)" class="preview-img" />
+                                    <img :src="resolveDisplayUrl(fwForm.image_display_url)" class="preview-img" :alt="fwForm.name || '封面图'" />
                                 </div>
-                                <div v-else class="no-file-hint">未上传封面图</div>
+                                <div v-else class="no-file-hint">
+                                    <i class="fa-regular fa-circle-question" aria-hidden="true"></i>未上传封面图
+                                </div>
                             </div>
 
                             <!-- 固件文件上传 -->
                             <div class="upload-section">
                                 <div class="upload-section-header">
-                                    <span class="field-label">固件文件</span>
+                                    <span class="field-label"><i class="fa-solid fa-file-zipper" aria-hidden="true"></i>固件文件</span>
                                     <div class="upload-btn-row">
                                         <button type="button" class="upload-btn" :disabled="!!uploading"
                                             @click="triggerFirmwareUpload">
-                                            📁 {{ uploading === 'firmware' ? '上传中…' : '选择固件' }}
+                                            <i class="fa-solid fa-file-arrow-up" aria-hidden="true"></i>{{ uploading === 'firmware' ? '上传中…' : '选择固件' }}
                                         </button>
                                         <button v-if="fwForm.download_filename" type="button" class="clear-file-btn"
-                                            @click="clearFirmware">✕ 清除</button>
+                                            @click="clearFirmware">
+                                            <i class="fa-solid fa-xmark" aria-hidden="true"></i>清除
+                                        </button>
                                     </div>
                                 </div>
                                 <div v-if="fwForm.download_filename" class="file-name-hint">
-                                    已上传：{{ fwForm.download_filename }}
+                                    <i class="fa-solid fa-file" aria-hidden="true"></i>{{ fwForm.download_filename }}
                                 </div>
-                                <div v-else class="no-file-hint">未上传固件文件</div>
+                                <div v-else class="no-file-hint">
+                                    <i class="fa-regular fa-circle-question" aria-hidden="true"></i>未上传固件文件
+                                </div>
                             </div>
                         </div>
                         <div class="modal-footer">
                             <button class="secondary-button" @click="closeFirmwareModal">取消</button>
                             <button class="primary-button" @click="saveFirmwareModal" :disabled="saving || !!uploading">
-                                {{ saving ? '保存中…' : '确认保存' }}
+                                <i class="fa-solid fa-floppy-disk" aria-hidden="true"></i>{{ saving ? '保存中…' : '确认保存' }}
                             </button>
                         </div>
                     </div>
                 </div>
             </Transition>
+        </Teleport>
+
+        <!-- ── 拖拽幽灵卡片（跟随指针，紧凑轻量） ── -->
+        <Teleport to="body">
+            <div v-if="drag" class="fw-ghost-card" :style="ghostStyle">
+                <div class="fw-thumb">
+                    <img v-if="drag.fw.image_display_url" :src="resolveDisplayUrl(drag.fw.image_display_url)"
+                        class="fw-img" alt="" />
+                    <div v-else class="fw-img-placeholder" aria-hidden="true"><i class="fa-solid fa-microchip"></i></div>
+                </div>
+                <div class="fw-info">
+                    <div class="fw-title-row">
+                        <span class="fw-name">{{ drag.fw.name || '（未命名）' }}</span>
+                        <span class="fw-id mono">{{ drag.fw.firmware_id }}</span>
+                    </div>
+                </div>
+            </div>
         </Teleport>
 
         <!--
@@ -294,7 +384,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Codemirror } from 'vue-codemirror'
 import { javascript } from '@codemirror/lang-javascript'
@@ -404,6 +494,16 @@ async function apiPost(path, body) {
 const groups = ref([])
 const loadingCatalog = ref(false)
 
+const totalFirmwareCount = computed(() =>
+    groups.value.reduce((sum, g) => sum + (g.firmwares?.length ?? 0), 0)
+)
+
+/** 分组头像用的序号（1/2/3…），循环取 A-Z 备用 */
+function groupInitial(index) {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+    return letters[index % letters.length]
+}
+
 async function loadCatalog() {
     if (!selectedUuid.value) return
     loadingCatalog.value = true
@@ -470,6 +570,219 @@ async function deleteFirmware(gi, fi) {
     if (success) showToast('固件已删除', 'success', 2500)
     else await loadCatalog() // 回滚
 }
+
+// ── 拖拽排序（支持跨分组） ────────────────────────────────────────────────────
+// drag = 拖拽会话状态；tIns 采用“原数组下标”语义：插到原下标 fi 之前（或 len 表示追加）
+const drag = ref(null)
+const flashFwId = ref(null)
+let flashTimer = 0
+const autoScrollState = { speed: 0, x: 0, y: 0 }
+let autoScrollTimer = 0
+
+const ghostStyle = computed(() => {
+    const d = drag.value
+    if (!d) return {}
+    return {
+        width: `${Math.min(d.w, 340)}px`,
+        transform: `translate3d(${d.x - d.dx}px, ${d.y - d.dy}px, 0)`,
+    }
+})
+
+function slotBefore(gi, fi) {
+    const d = drag.value
+    return !!d && d.tgi === gi && d.tIns === fi
+}
+
+function slotEnd(gi) {
+    const d = drag.value
+    return !!d && d.tgi === gi && d.tIns === (groups.value[gi]?.firmwares.length ?? 0)
+}
+
+function onHandleDown(e, gi, fi) {
+    if (drag.value || e.button !== 0) return
+    const itemEl = e.currentTarget.closest('.fw-item')
+    if (!itemEl) return
+    const rect = itemEl.getBoundingClientRect()
+    const fw = groups.value[gi]?.firmwares[fi]
+    if (!fw) return
+    const isTouch = e.pointerType === 'touch'
+    drag.value = {
+        pointerId: e.pointerId,
+        fw: { ...fw },
+        sgi: gi, sfi: fi,
+        x: e.clientX, y: e.clientY,
+        dx: e.clientX - rect.left,
+        dy: e.clientY - rect.top - (isTouch ? 58 : 0), // 触屏时卡片上提，避免被手指挡住
+        w: rect.width, h: rect.height,
+        tgi: gi, tIns: fi,
+    }
+    autoScrollState.x = e.clientX
+    autoScrollState.y = e.clientY
+    // 拖拽期间关闭全局 smooth 滚动：否则每帧 scrollBy 的平滑动画不断被重启，
+    // 实际滚速会被压缩成龟速，且永远达不到反比公式要求的高速
+    document.documentElement.style.scrollBehavior = 'auto'
+    document.body.style.userSelect = 'none'
+    document.documentElement.style.cursor = 'grabbing'
+    window.addEventListener('pointermove', onDragMove)
+    window.addEventListener('pointerup', onDragEnd)
+    window.addEventListener('pointercancel', onDragCancel)
+    window.addEventListener('lostpointercapture', onLostCapture)
+    window.addEventListener('keydown', onDragKeydown)
+    window.addEventListener('scroll', onDragScroll, { passive: true })
+    // 捕获指针：移出浏览器窗口后 move/up 事件仍会送达，避免拖拽会话悬挂
+    try { e.currentTarget.setPointerCapture(e.pointerId) } catch { /* 部分指针类型捕获失败时由 window 监听兜底 */ }
+    e.preventDefault()
+}
+
+function onDragMove(e) {
+    const d = drag.value
+    if (!d || e.pointerId !== d.pointerId) return
+    e.preventDefault()
+    d.x = e.clientX
+    d.y = e.clientY
+    autoScrollState.x = e.clientX
+    autoScrollState.y = e.clientY
+    updateDropTarget(e.clientX, e.clientY)
+    updateAutoScroll(e.clientX, e.clientY)
+}
+
+/** 判断指针落点对应的插入位置（跨分组通用） */
+function updateDropTarget(x, y) {
+    const d = drag.value
+    if (!d) return
+    if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return
+    const el = document.elementFromPoint(x, y)
+    const groupEl = el ? el.closest('.group-block') : null
+    if (!groupEl || groupEl.dataset.gi === undefined) return
+    const gi = Number(groupEl.dataset.gi)
+    const group = groups.value[gi]
+    if (!group) return
+    let tIns
+    const slotEl = el.closest('.fw-drop-slot')
+    const itemEl = el.closest('.fw-item')
+    if (slotEl && slotEl.dataset.gi !== undefined && Number(slotEl.dataset.gi) === gi) {
+        tIns = Number(slotEl.dataset.ins)
+    } else if (itemEl && itemEl.parentElement.classList.contains('firmware-list') && itemEl.dataset.fi !== undefined) {
+        const fi = Number(itemEl.dataset.fi)
+        const r = itemEl.getBoundingClientRect()
+        tIns = fi + ((y - r.top) > r.height / 2 ? 1 : 0)
+    } else {
+        // 悬停在分组其它区域（如分组头）→ 追加到该分组末尾
+        tIns = group.firmwares.length
+    }
+    tIns = Math.max(0, Math.min(tIns, group.firmwares.length))
+    if (d.tgi !== gi || d.tIns !== tIns) {
+        d.tgi = gi
+        d.tIns = tIns
+    }
+}
+
+function updateAutoScroll(x, y) {
+    const edge = 170
+    // 钳制到窗口范围内：指针捕获后事件在窗口外仍会派发，
+    // 原始 y 可能为负或超过视口高，直接代入会算出方向颠倒的速度
+    const cy = Math.min(Math.max(y, 0), window.innerHeight)
+    let speed = 0
+    // 严格反比：速度 = 560 / 距边缘距离
+    // 刚进入判定区域（~170px）时仅 ≈3px/帧 缓慢漂移，
+    // 距离减半速度翻倍，在边缘处可达每帧上百像素，趋近无限快
+    if (cy < edge) speed = -(560 / (cy + 4))
+    else if (cy > window.innerHeight - edge) speed = 560 / (window.innerHeight - cy + 4)
+    autoScrollState.speed = speed
+    if (speed && !autoScrollTimer) {
+        autoScrollTimer = setInterval(onAutoScrollTick, 8)
+    } else if (!speed && autoScrollTimer) {
+        clearInterval(autoScrollTimer)
+        autoScrollTimer = 0
+    }
+}
+
+function onAutoScrollTick() {
+    if (!drag.value || !autoScrollState.speed) return
+    window.scrollBy(0, autoScrollState.speed)
+    updateDropTarget(autoScrollState.x, autoScrollState.y)
+}
+
+function onDragScroll() {
+    if (!drag.value) return
+    updateDropTarget(autoScrollState.x, autoScrollState.y)
+}
+
+function onDragEnd(e) {
+    const d = drag.value
+    if (!d || (e && e.pointerId !== undefined && e.pointerId !== d.pointerId)) return
+    cleanupDrag()
+    commitDrag(d)
+}
+
+function onDragCancel() {
+    if (!drag.value) return
+    cleanupDrag()
+}
+
+function onDragKeydown(e) {
+    if (e.key === 'Escape' && drag.value) {
+        e.preventDefault()
+        cleanupDrag()
+        showToast('已取消拖拽', 'info', 1600)
+    }
+}
+
+/** 指针捕获意外丢失（如手柄被重渲染移除）时按取消处理，防止会话悬挂 */
+function onLostCapture(e) {
+    if (drag.value && e.pointerId === drag.value.pointerId) cleanupDrag()
+}
+
+function cleanupDrag() {
+    window.removeEventListener('pointermove', onDragMove)
+    window.removeEventListener('pointerup', onDragEnd)
+    window.removeEventListener('pointercancel', onDragCancel)
+    window.removeEventListener('lostpointercapture', onLostCapture)
+    window.removeEventListener('keydown', onDragKeydown)
+    window.removeEventListener('scroll', onDragScroll)
+    if (autoScrollTimer) {
+        clearInterval(autoScrollTimer)
+        autoScrollTimer = 0
+    }
+    autoScrollState.speed = 0
+    document.documentElement.style.scrollBehavior = ''
+    document.body.style.userSelect = ''
+    document.documentElement.style.cursor = ''
+    document.querySelectorAll('.drag-handle').forEach(el => el.blur())
+    drag.value = null
+}
+
+/** 落点生效：先移除原条目，再插入目标位置；仅位置变化时保存 */
+function commitDrag(d) {
+    const srcGroup = groups.value[d.sgi]
+    const srcFw = srcGroup?.firmwares[d.sfi]
+    // 数据被并发操作（如重新加载）改变时放弃提交
+    if (!srcFw || srcFw.firmware_id !== d.fw.firmware_id) return
+    const moved = groups.value[d.sgi].firmwares.splice(d.sfi, 1)[0]
+    let ins = d.tIns
+    if (d.tgi === d.sgi && d.tIns > d.sfi) ins -= 1
+    groups.value[d.tgi].firmwares.splice(ins, 0, moved)
+    const movedPos = d.tgi === d.sgi && ins === d.sfi
+    if (movedPos) return // 回到原位，无需保存
+    flashFwId.value = moved.firmware_id
+    clearTimeout(flashTimer)
+    flashTimer = setTimeout(() => { flashFwId.value = null }, 1200)
+    const msg = d.tgi !== d.sgi
+        ? `固件「${moved.name || moved.firmware_id}」已移动到「${groups.value[d.tgi].label}」`
+        : '固件顺序已更新'
+    saveReorder(msg)
+}
+
+async function saveReorder(msg) {
+    const success = await saveAll()
+    if (success) showToast(msg, 'success', 2400)
+    else await loadCatalog() // 回滚
+}
+
+onUnmounted(() => {
+    if (drag.value) cleanupDrag()
+    clearTimeout(flashTimer)
+})
 
 // ── 分组设置弹窗 ──────────────────────────────────────────────────────────────
 const showGroupModal = ref(false)
@@ -887,8 +1200,16 @@ onMounted(async () => {
 }
 
 .no-perm-icon {
-    font-size: 52px;
-    margin-bottom: 16px;
+    width: 74px;
+    height: 74px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(var(--warning-color-rgb), 0.12);
+    color: var(--warning-color);
+    font-size: 30px;
 }
 
 .no-permission-card h2 {
@@ -971,22 +1292,104 @@ onMounted(async () => {
     gap: 16px;
 }
 
+.catalog-topbar-info { min-width: 0; }
+
+.catalog-topbar .section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.catalog-topbar .section-title i { color: var(--theme-color); font-size: 16px; }
+
+/* ── 空状态 ── */
+.catalog-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 52px 20px;
+    border: 1px dashed rgba(var(--text-color-rgb), 0.16);
+    border-radius: 18px;
+    background: rgba(var(--text-color-rgb), 0.02);
+    text-align: center;
+}
+
+.catalog-empty-icon {
+    width: 62px;
+    height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    background: rgba(var(--theme-color-rgb), 0.1);
+    color: var(--theme-color);
+    font-size: 26px;
+    margin-bottom: 8px;
+}
+
+.catalog-empty-title {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-color);
+}
+
+.catalog-empty-desc {
+    margin: 0 0 14px;
+    font-size: 13px;
+    color: var(--secondary-text-color);
+}
+
 /* ── 分组块 ── */
+.group-stack { display: flex; flex-direction: column; gap: 14px; }
+
 .group-block {
     border: 1px solid rgba(var(--text-color-rgb), 0.08);
     border-radius: 16px;
     overflow: hidden;
-    margin-bottom: 14px;
+    background: rgba(var(--card-background-rgb), 0.55);
+    transition: box-shadow .2s ease, border-color .2s ease;
+}
+
+.group-block:hover {
+    border-color: rgba(var(--theme-color-rgb), 0.28);
+    box-shadow: 0 8px 24px rgba(12, 24, 48, 0.07);
 }
 
 .group-header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     padding: 14px 16px;
-    background: rgba(var(--text-color-rgb), 0.025);
+    background: linear-gradient(90deg, rgba(var(--theme-color-rgb), 0.075), rgba(var(--theme-color-rgb), 0.02) 55%, transparent);
+    border-bottom: 1px solid rgba(var(--text-color-rgb), 0.06);
     gap: 12px;
     flex-wrap: wrap;
+}
+
+.group-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
+}
+
+.group-avatar {
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(var(--theme-color-rgb), 0.85), rgba(var(--theme-color-rgb), 0.62));
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: .02em;
+    box-shadow: 0 4px 10px rgba(var(--theme-color-rgb), 0.22);
 }
 
 .group-meta {
@@ -997,24 +1400,33 @@ onMounted(async () => {
     min-width: 0;
 }
 
+.group-title-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
 .group-label {
     font-size: 16px;
     color: var(--text-color);
     font-weight: 700;
 }
 
-.group-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
 .tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 2px 9px;
     border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
+    white-space: nowrap;
 }
+
+.tag i { font-size: 10px; opacity: .85; }
+
+.tag-count { background: rgba(var(--text-color-rgb), 0.07); color: var(--secondary-text-color); }
 
 .tag-id {
     background: rgba(var(--theme-color-rgb), 0.1);
@@ -1031,10 +1443,18 @@ onMounted(async () => {
     color: var(--secondary-text-color);
 }
 
+.tag-ok {
+    background: rgba(34, 197, 94, 0.12);
+    color: #15803d;
+}
+
 .tag-empty {
     background: rgba(var(--text-color-rgb), 0.04);
     color: rgba(var(--text-color-rgb), 0.35);
 }
+
+body.dark-theme .tag-pts,
+body.dark-theme .tag-ok { color: #4ade80; }
 
 .group-actions {
     display: flex;
@@ -1045,8 +1465,11 @@ onMounted(async () => {
 }
 
 .action-btn {
-    padding: 6px 12px;
-    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 13px;
+    border-radius: 9px;
     border: 1px solid rgba(var(--theme-color-rgb), 0.3);
     background: rgba(var(--theme-color-rgb), 0.08);
     color: var(--theme-color);
@@ -1057,8 +1480,11 @@ onMounted(async () => {
     white-space: nowrap;
 }
 
+.action-btn i { font-size: 11px; }
+
 .action-btn:hover {
     background: rgba(var(--theme-color-rgb), 0.18);
+    transform: translateY(-1px);
 }
 
 .icon-btn {
@@ -1067,40 +1493,65 @@ onMounted(async () => {
     border-radius: 10px;
     border: 1px solid rgba(var(--text-color-rgb), 0.1);
     background: rgba(var(--text-color-rgb), 0.04);
+    color: var(--secondary-text-color);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 15px;
+    font-size: 13px;
     transition: all 0.2s ease;
 }
 
 .icon-btn:hover {
-    background: rgba(var(--text-color-rgb), 0.1);
+    background: rgba(var(--theme-color-rgb), 0.12);
+    border-color: rgba(var(--theme-color-rgb), 0.3);
+    color: var(--theme-color);
 }
 
 .icon-btn.danger:hover {
     background: rgba(239, 68, 68, 0.12);
-    border-color: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.35);
+    color: #ef4444;
 }
+
+.icon-btn:disabled { opacity: .45; cursor: not-allowed; }
 
 /* ── 固件列表 ── */
 .firmware-list {
-    padding: 10px 12px;
+    padding: 10px 12px 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    border-top: 1px solid rgba(var(--text-color-rgb), 0.06);
 }
+
+.fw-list-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 18px 16px;
+    border: 1px dashed rgba(var(--text-color-rgb), 0.14);
+    border-radius: 10px;
+    color: var(--secondary-text-color);
+    font-size: 13px;
+}
+
+.fw-list-empty i { color: rgba(var(--text-color-rgb), 0.3); font-size: 14px; }
 
 .fw-item {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 12px;
     padding: 10px 12px;
     border-radius: 12px;
     border: 1px solid rgba(var(--text-color-rgb), 0.06);
     background: rgba(var(--text-color-rgb), 0.02);
+    transition: border-color .18s ease, background .18s ease;
+}
+
+.fw-item:hover {
+    border-color: rgba(var(--theme-color-rgb), 0.26);
+    background: rgba(var(--theme-color-rgb), 0.035);
 }
 
 .fw-thumb {
@@ -1110,7 +1561,9 @@ onMounted(async () => {
     border-radius: 10px;
     overflow: hidden;
     border: 1px solid rgba(var(--text-color-rgb), 0.08);
-    background: rgba(var(--text-color-rgb), 0.04);
+    background: rgba(var(--theme-color-rgb), 0.07);
+    color: rgba(var(--theme-color-rgb), 0.55);
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1122,10 +1575,6 @@ onMounted(async () => {
     object-fit: cover;
 }
 
-.fw-img-placeholder {
-    font-size: 22px;
-}
-
 .fw-info {
     flex: 1;
     min-width: 0;
@@ -1134,17 +1583,26 @@ onMounted(async () => {
     gap: 3px;
 }
 
-.fw-id {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 12px;
-    color: var(--theme-color);
-    font-weight: 600;
+.fw-title-row {
+    display: flex;
+    align-items: baseline;
+    gap: 9px;
+    flex-wrap: wrap;
+    min-width: 0;
 }
 
 .fw-name {
     font-size: 14px;
     font-weight: 700;
     color: var(--text-color);
+}
+
+.fw-id {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    color: var(--theme-color);
+    font-weight: 600;
+    word-break: break-all;
 }
 
 .fw-desc {
@@ -1168,6 +1626,135 @@ onMounted(async () => {
     flex-shrink: 0;
 }
 
+/* ── 拖拽排序 ── */
+.drag-handle {
+    flex-shrink: 0;
+    align-self: stretch;
+    width: 20px;
+    margin: -10px 0 -10px -7px;
+    padding: 0 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: rgba(var(--text-color-rgb), 0.22);
+    cursor: grab;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    user-select: none;
+    border-radius: 8px;
+    transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.drag-handle i {
+    font-size: 12px;
+    pointer-events: none;
+}
+
+.drag-handle:hover,
+.drag-handle:focus-visible {
+    color: var(--theme-color);
+    background: rgba(var(--theme-color-rgb), 0.1);
+    outline: none;
+    transform: scale(1.08);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+    color: var(--theme-color);
+    transform: scale(0.94);
+}
+
+.fw-item:hover .drag-handle { color: rgba(var(--text-color-rgb), 0.4); }
+.fw-item:hover .drag-handle:hover { color: var(--theme-color); }
+
+/* 拖拽中的原始位置条目：隐藏，让位给虚线占位框 */
+.fw-item-drag-src { display: none; }
+
+/* 蓝色虚线预放置框 */
+.fw-drop-slot {
+    min-height: 62px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    border: 1.6px dashed rgba(var(--theme-color-rgb), 0.6);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(var(--theme-color-rgb), 0.1), rgba(var(--theme-color-rgb), 0.045));
+    color: rgba(var(--theme-color-rgb), 0.78);
+    font-size: 12px;
+    font-weight: 700;
+    animation: dropSlotIn .16s ease;
+    transform-origin: center top;
+}
+
+.fw-drop-slot i {
+    font-size: 11px;
+    animation: slotBob 1.15s ease-in-out infinite;
+}
+
+@keyframes dropSlotIn {
+    from { opacity: 0; transform: scaleY(.82); }
+    to { opacity: 1; transform: scaleY(1); }
+}
+
+@keyframes slotBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(2.5px); }
+}
+
+/* 跟随指针的幽灵卡片（紧凑样式，无任何形变/动画特效） */
+.fw-ghost-card {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 1500;
+    pointer-events: none;
+    user-select: none;
+    will-change: transform;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    border: 1px solid rgba(var(--theme-color-rgb), 0.4);
+    border-radius: 11px;
+    background: rgba(var(--card-background-rgb), 0.98);
+    box-shadow: 0 10px 26px rgba(12, 24, 48, 0.22);
+}
+
+.fw-ghost-card .fw-thumb {
+    width: 38px;
+    height: 38px;
+    border-radius: 9px;
+    font-size: 15px;
+}
+
+.fw-ghost-card .fw-name {
+    font-size: 13px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.fw-ghost-card .fw-id {
+    font-size: 10px;
+}
+
+/* 落点闪光反馈 */
+.fw-item-flash {
+    animation: fwLand 1.1s ease;
+    border-color: rgba(var(--theme-color-rgb), 0.45) !important;
+    background: rgba(var(--theme-color-rgb), 0.09) !important;
+    box-shadow: 0 6px 18px rgba(var(--theme-color-rgb), 0.14);
+}
+
+@keyframes fwLand {
+    0% { background: rgba(var(--theme-color-rgb), 0.22); }
+    60% { background: rgba(var(--theme-color-rgb), 0.14); }
+    100% { background: rgba(var(--theme-color-rgb), 0.09); }
+}
+
 /* ── 上传区块 ── */
 .upload-section {
     margin-top: 16px;
@@ -1185,6 +1772,14 @@ onMounted(async () => {
     flex-wrap: wrap;
 }
 
+.upload-section-header .field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.upload-section-header .field-label i { color: var(--theme-color); font-size: 12px; }
+
 .upload-btn-row {
     display: flex;
     gap: 6px;
@@ -1192,6 +1787,9 @@ onMounted(async () => {
 }
 
 .upload-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     padding: 6px 10px;
     border-radius: 8px;
     border: 1px solid rgba(var(--theme-color-rgb), 0.3);
@@ -1204,6 +1802,8 @@ onMounted(async () => {
     transition: all 0.2s;
 }
 
+.upload-btn i { font-size: 11px; }
+
 .upload-btn:hover:not(:disabled) {
     background: rgba(var(--theme-color-rgb), 0.18);
 }
@@ -1214,6 +1814,9 @@ onMounted(async () => {
 }
 
 .clear-file-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
     padding: 5px 9px;
     border-radius: 7px;
     border: 1px solid rgba(239, 68, 68, 0.3);
@@ -1225,6 +1828,8 @@ onMounted(async () => {
     transition: all 0.2s;
     white-space: nowrap;
 }
+
+.clear-file-btn i { font-size: 9px; }
 
 .clear-file-btn:hover {
     background: rgba(239, 68, 68, 0.18);
@@ -1247,14 +1852,25 @@ onMounted(async () => {
 
 .file-name-hint {
     margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
     font-size: 12px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     color: var(--theme-color);
     word-break: break-all;
 }
 
+.file-name-hint i,
+.no-file-hint i { flex-shrink: 0; color: var(--secondary-text-color); font-size: 12px; }
+
+.file-name-hint i { color: var(--theme-color); }
+
 .no-file-hint {
     margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
     font-size: 12px;
     color: var(--secondary-text-color);
 }
@@ -1401,10 +2017,25 @@ onMounted(async () => {
 }
 
 .modal-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
     margin: 0;
     font-size: 18px;
     color: var(--text-color);
     font-weight: 700;
+}
+
+.modal-title i {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: rgba(var(--theme-color-rgb), 0.1);
+    color: var(--theme-color);
+    font-size: 13px;
 }
 
 .popup-close-btn {
@@ -1416,6 +2047,10 @@ onMounted(async () => {
     padding: 6px 10px;
     border-radius: 8px;
     transition: all 0.2s;
+}
+
+.popup-close-btn i {
+    font-size: 13px;
 }
 
 .popup-close-btn:hover {
@@ -1452,6 +2087,9 @@ onMounted(async () => {
 }
 
 .field-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     font-size: 12px;
     font-weight: 700;
     color: var(--secondary-text-color);
@@ -1504,10 +2142,17 @@ onMounted(async () => {
 
     .group-header {
         flex-direction: column;
+        align-items: stretch;
     }
+
+    .group-actions { justify-content: flex-end; }
+
+    .fw-thumb { width: 48px; height: 48px; }
 
     .fw-item {
         flex-wrap: wrap;
     }
+
+    .catalog-empty { padding: 40px 16px; }
 }
 </style>
