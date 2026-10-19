@@ -405,6 +405,8 @@
                     <WebAdminTemplateReviewPanel :token="token" />
                 </template>
 
+                <WebAdminSiteConfigPanel v-if="mainTab === 'site-config'" :token="token" />
+
                 </main>
                 </div>
 
@@ -423,6 +425,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuth } from '../composables/useAuth.js'
 import { postJson } from '../services/api.js'
 import WebAdminTemplateReviewPanel from '../components/WebAdminTemplateReviewPanel.vue'
+import WebAdminSiteConfigPanel from '../components/WebAdminSiteConfigPanel.vue'
 
 const { state } = useAuth()
 const route = useRoute()
@@ -449,12 +452,13 @@ const navigationGroups = [
     { label: '平台管理', icon: 'fa-solid fa-sliders', items: [
         { section: 'providers', label: '提供商权限', icon: 'fa-solid fa-building' },
         { section: 'review', label: '社区审核', icon: 'fa-solid fa-clipboard-check' },
+        { section: 'site-config', label: '网站配置', icon: 'fa-solid fa-gear' },
     ] },
 ]
 
 const billingTabs = ['history', 'unsettled']
 const userTabs = ['orders', 'list', 'cache', 'records']
-const categories = ['billing', 'users', 'providers', 'review']
+const categories = ['billing', 'users', 'providers', 'review', 'site-config']
 const currentPageLabel = computed(() => navigationGroups.flatMap(group => group.items)
     .find(item => isActiveNav(item))?.label || '网站管理')
 
