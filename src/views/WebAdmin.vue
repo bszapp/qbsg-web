@@ -155,7 +155,7 @@
                                         <th>创建者</th>
                                         <th>支付状态</th>
                                         <th>创建时间</th>
-                                        <th>操作</th>
+                                        <th v-if="isAdmin">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -166,7 +166,7 @@
                                         <td>{{ o.creator_uid === 0 ? '未知' : o.creator_username ? `${o.creator_username}（UID ${o.creator_uid}）` : `UID ${o.creator_uid}` }}</td>
                                         <td>{{ o.payment_status === 'paid' ? '已支付' : '未支付' }}</td>
                                         <td class="muted-text">{{ fmt(o.created_at) }}</td>
-                                        <td class="actions-cell">
+                                        <td v-if="isAdmin" class="actions-cell">
                                             <button v-if="o.payment_status === 'unpaid'" class="danger-text-btn" @click="deleteOrder(o.order_no)">删除</button>
                                             <span v-else class="muted-text">—</span>
                                         </td>
@@ -209,8 +209,8 @@
                                             Date(u.registered_at).toLocaleDateString('zh-CN') : '-' }}</td>
                                         <td class="actions-cell">
                                             <button class="secondary-button small-btn"
-                                                @click="openUserEdit(u)">编辑</button>
-                                            <button class="danger-text-btn" @click="deleteUser(u)">删除</button>
+                                                @click="openUserEdit(u)">{{ isAdmin ? '编辑' : '增减积分' }}</button>
+                                            <button v-if="isAdmin" class="danger-text-btn" @click="deleteUser(u)">删除</button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -233,7 +233,7 @@
                     <div v-if="usersTab === 'cache'" class="panel-card">
                         <div class="section-header">
                             <h2 class="section-title">激活缓存</h2>
-                            <button class="warn-btn" @click="clearAllCache">清空全部缓存</button>
+                            <button v-if="isAdmin" class="warn-btn" @click="clearAllCache">清空全部缓存</button>
                         </div>
                         <div class="table-wrap">
                             <table class="wa-table">
@@ -244,7 +244,7 @@
                                         <th>固件</th>
                                         <th>MAC</th>
                                         <th>时间</th>
-                                        <th>操作</th>
+                                        <th v-if="isAdmin">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -254,7 +254,7 @@
                                         <td class="mono">{{ c.firmware_id }}</td>
                                         <td class="mono">{{ c.mac }}</td>
                                         <td class="muted-text">{{ fmt(c.created_at) }}</td>
-                                        <td><button class="danger-text-btn" @click="deleteCache(c.id)">删除</button></td>
+                                        <td v-if="isAdmin"><button class="danger-text-btn" @click="deleteCache(c.id)">删除</button></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -282,7 +282,7 @@
                                         <th>固件</th>
                                         <th>MAC</th>
                                         <th>时间</th>
-                                        <th>操作</th>
+                                        <th v-if="isAdmin">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -293,7 +293,7 @@
                                         <td class="mono">{{ r.firmware_id }}</td>
                                         <td class="mono">{{ r.mac }}</td>
                                         <td class="muted-text">{{ fmt(r.created_at) }}</td>
-                                        <td><button class="danger-text-btn" @click="deleteRecord(r.id)">删除</button></td>
+                                        <td v-if="isAdmin"><button class="danger-text-btn" @click="deleteRecord(r.id)">删除</button></td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -317,18 +317,18 @@
                             <div v-if="editUser" class="modal-overlay" @mousedown.self="editUser = null">
                                 <div class="modal-container">
                                     <div class="modal-header">
-                                        <h2 class="modal-title">编辑用户：{{ editUser.username }}</h2>
+                                        <h2 class="modal-title">{{ isAdmin ? '编辑用户' : '增减积分' }}：{{ editUser.username }}</h2>
                                         <button class="popup-close-btn" @click="editUser = null">✕</button>
                                     </div>
                                     <div class="modal-body">
-                                        <div class="field-group">
+                                        <div v-if="isAdmin" class="field-group">
                                             <label class="field-label">新用户名</label>
                                             <div class="input-row">
                                                 <input v-model="editForm.username" class="text-input flex1" />
                                                 <button @click="doRename" class="secondary-button">改名</button>
                                             </div>
                                         </div>
-                                        <div class="field-group">
+                                        <div v-if="isAdmin" class="field-group">
                                             <label class="field-label">设置积分</label>
                                             <div class="input-row">
                                                 <input v-model.number="editForm.points" type="number"
@@ -344,7 +344,7 @@
                                                 <button @click="doAddPoints" class="secondary-button">增减</button>
                                             </div>
                                         </div>
-                                        <div class="field-group">
+                                        <div v-if="isAdmin" class="field-group">
                                             <label class="field-label">重置密码</label>
                                             <div class="input-row">
                                                 <input v-model="editForm.newPassword" class="text-input flex1"
@@ -352,7 +352,7 @@
                                                 <button @click="doResetPwd" class="secondary-button">重置</button>
                                             </div>
                                         </div>
-                                        <div class="field-group">
+                                        <div v-if="isAdmin" class="field-group">
                                             <label class="field-label">强制下线</label>
                                             <button @click="doRevokeUserTokens" class="warn-btn">注销所有 Token</button>
                                         </div>

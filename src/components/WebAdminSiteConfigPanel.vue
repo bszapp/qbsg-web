@@ -20,11 +20,11 @@
                 <section class="config-card">
                     <div class="config-card-heading">
                         <span class="config-icon"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
-                        <div><h3>权限管理</h3><p>授权特定用户管理“用户与激活”分区。</p></div>
+                        <div><h3>权限管理</h3><p>授权特定用户增减积分，并查看“用户与激活”分区。</p></div>
                     </div>
                     <div class="permission-scope">
-                        <strong>用户与激活 · 全部操作</strong>
-                        <p>充值订单、用户列表、激活缓存与激活记录，包含改名、积分调整、密码重置、强制下线和删除。</p>
+                        <strong>用户与激活 · 增减积分与只读权限</strong>
+                        <p>允许增减用户积分；充值订单、用户列表、激活缓存与激活记录的其他功能仅支持查看和搜索。</p>
                     </div>
                     <label class="config-field" for="permission-username">添加授权用户</label>
                     <div class="permission-add-row">
@@ -35,7 +35,7 @@
                     <div class="permission-user-list">
                         <div v-for="id in config.permissions.userManagementUserIds" :key="id" class="permission-user">
                             <span class="permission-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
-                            <div><strong>{{ permissionUserName(id) }}</strong><small>UID {{ id }} · 用户与激活管理权限</small></div>
+                            <div><strong>{{ permissionUserName(id) }}</strong><small>UID {{ id }} · 增减积分与只读权限</small></div>
                             <button type="button" class="config-remove" :aria-label="`移除 ${permissionUserName(id)} 的授权`" @click="removePermissionUser(id)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
                         </div>
                         <p v-if="!config.permissions.userManagementUserIds.length" class="config-empty">暂未单独授权用户，网站管理员保留全部管理权限。</p>
