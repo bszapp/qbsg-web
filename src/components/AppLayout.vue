@@ -107,7 +107,7 @@
           </div>
 
           <!-- 管理后台入口 -->
-          <template v-if="state.user?.providers?.length || state.user?.is_admin">
+          <template v-if="state.user?.providers?.length || state.user?.is_admin || state.user?.can_manage_users">
             <div class="divider" />
             <div class="menu-section-label">管理后台</div>
             <div v-if="state.user?.providers?.length" class="menu-item admin-menu-link"
@@ -116,7 +116,7 @@
                 <i class="menu-icon fa-solid fa-boxes-stacked" aria-hidden="true"></i>
                 <span>提供商管理</span>
             </div>
-            <div v-if="state.user?.is_admin" class="menu-item admin-menu-link"
+            <div v-if="state.user?.is_admin || state.user?.can_manage_users" class="menu-item admin-menu-link"
               :class="{ 'menu-item-active': route.path.startsWith('/me/webadmin') }" @click="goToWebAdmin">
                 <i class="menu-icon fa-solid fa-gauge-high" aria-hidden="true"></i>
                 <span>网站管理</span>
@@ -468,7 +468,7 @@ function goToProviderAdmin() {
 
 function goToWebAdmin() {
   closeDropdown()
-  router.push('/me/webadmin/billing/history/')
+  router.push(state.user?.is_admin ? '/me/webadmin/billing/history/' : '/me/webadmin/users/orders/')
 }
 
 async function handleLogout() {

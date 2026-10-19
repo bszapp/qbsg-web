@@ -3,7 +3,7 @@
         <div class="config-intro">
             <div>
                 <p class="config-eyebrow">网站配置</p>
-                <h2>管理社区标签与充值规则</h2>
+                <h2>管理社区、充值与用户权限</h2>
                 <p>修改后统一保存，新的设置立即生效。</p>
             </div>
             <span class="config-count"><i class="fa-solid fa-tags" aria-hidden="true"></i>{{ config?.templateTags.length ?? '—' }} 个标签</span>
@@ -17,6 +17,32 @@
 
         <template v-else>
             <fieldset :disabled="saving" class="config-fields">
+                <section class="config-card">
+                    <div class="config-card-heading">
+                        <span class="config-icon"><i class="fa-solid fa-user-shield" aria-hidden="true"></i></span>
+                        <div><h3>权限管理</h3><p>授权特定用户管理“用户与激活”分区。</p></div>
+                    </div>
+                    <div class="permission-scope">
+                        <strong>用户与激活 · 全部操作</strong>
+                        <p>充值订单、用户列表、激活缓存与激活记录，包含改名、积分调整、密码重置、强制下线和删除。</p>
+                    </div>
+                    <label class="config-field" for="permission-username">添加授权用户</label>
+                    <div class="permission-add-row">
+                        <input id="permission-username" v-model="permissionUsername" class="text-input" placeholder="输入完整用户名" @keydown.enter.prevent="addPermissionUser" />
+                        <button type="button" class="secondary-button" :disabled="lookingUp || !permissionUsername.trim()" @click="addPermissionUser">{{ lookingUp ? '查询中…' : '添加用户' }}</button>
+                    </div>
+                    <p v-if="permissionError" class="permission-error" role="alert">{{ permissionError }}</p>
+                    <div class="permission-user-list">
+                        <div v-for="id in config.permissions.userManagementUserIds" :key="id" class="permission-user">
+                            <span class="permission-avatar"><i class="fa-solid fa-user" aria-hidden="true"></i></span>
+                            <div><strong>{{ permissionUserName(id) }}</strong><small>UID {{ id }} · 用户与激活管理权限</small></div>
+                            <button type="button" class="config-remove" :aria-label="`移除 ${permissionUserName(id)} 的授权`" @click="removePermissionUser(id)"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button>
+                        </div>
+                        <p v-if="!config.permissions.userManagementUserIds.length" class="config-empty">暂未单独授权用户，网站管理员保留全部管理权限。</p>
+                    </div>
+                    <p class="permission-note">授权按用户 UID 绑定，改名后继续有效。添加或移除后点击下方保存；网站配置等其他分区由网站管理员管理。</p>
+                </section>
+
                 <section class="config-card">
                     <div class="config-card-heading">
                         <span class="config-icon"><i class="fa-solid fa-tags" aria-hidden="true"></i></span>
@@ -86,7 +112,7 @@
 
             <div class="config-footer">
                 <div aria-live="polite"><p v-if="error" class="config-error" role="alert">{{ error }}</p><p v-else-if="saved" class="config-success" role="status"><i class="fa-solid fa-circle-check" aria-hidden="true"></i>网站配置已保存并生效</p><p v-else>所有修改将在保存后生效。</p></div>
-                <button type="submit" class="primary-button" :disabled="saving"><i :class="saving ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-floppy-disk'" aria-hidden="true"></i>{{ saving ? '正在保存…' : '保存网站配置' }}</button>
+                <button type="submit" class="primary-button" :disabled="saving || lookingUp"><i :class="saving ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-floppy-disk'" aria-hidden="true"></i>{{ saving ? '正在保存…' : '保存网站配置' }}</button>
             </div>
         </template>
     </form>
@@ -102,18 +128,55 @@ const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const saved = ref(false)
+const permissionUsername = ref('')
+const permissionUsers = ref([])
+const permissionError = ref('')
+const lookingUp = ref(false)
 const isPaused = computed(() => String(config.value?.points.minPaymentYuan).trim() === 'Infinity')
 
 watch(config, () => { saved.value = false }, { deep: true, flush: 'sync' })
+
+function permissionUserName(id) {
+    return permissionUsers.value.find(user => user.id === id)?.username || `用户 ${id}`
+}
+
+async function addPermissionUser() {
+    const username = permissionUsername.value.trim()
+    if (!username || lookingUp.value || saving.value) return
+    lookingUp.value = true
+    permissionError.value = ''
+    try {
+        const data = await postJson('/api/admin/site-config/user-lookup', { token: props.token, username })
+        if (!data.ok) throw new Error(data.error || data.message || '用户查询失败')
+        if (config.value.permissions.userManagementUserIds.includes(data.user.id)) throw new Error('该用户已在授权名单中')
+        config.value.permissions.userManagementUserIds.push(data.user.id)
+        permissionUsers.value.push(data.user)
+        permissionUsername.value = ''
+    } catch (cause) {
+        permissionError.value = cause.message || '用户查询失败，请稍后重试'
+    } finally {
+        lookingUp.value = false
+    }
+}
+
+function removePermissionUser(id) {
+    config.value.permissions.userManagementUserIds = config.value.permissions.userManagementUserIds.filter(value => value !== id)
+    permissionUsers.value = permissionUsers.value.filter(user => user.id !== id)
+    permissionError.value = ''
+}
 
 async function load() {
     loading.value = true
     error.value = ''
     config.value = null
+    permissionUsers.value = []
+    permissionUsername.value = ''
+    permissionError.value = ''
     try {
         const data = await postJson('/api/admin/site-config/get', { token: props.token })
         if (!data.ok) throw new Error(data.error || data.message || '网站配置加载失败')
         config.value = data.config
+        permissionUsers.value = data.userManagementUsers || []
     } catch (cause) {
         error.value = cause.message || '网站配置加载失败，请稍后重试'
     } finally {
@@ -122,7 +185,7 @@ async function load() {
 }
 
 async function save() {
-    if (saving.value) return
+    if (saving.value || lookingUp.value) return
     error.value = ''
     saved.value = false
     const minimum = String(config.value.points.minPaymentYuan).trim()
@@ -136,11 +199,13 @@ async function save() {
             token: props.token,
             config: {
                 templateTags: config.value.templateTags,
+                permissions: config.value.permissions,
                 points: { ...config.value.points, minPaymentYuan: minimum === 'Infinity' ? 'Infinity' : Number(minimum) },
             },
         })
         if (!data.ok) throw new Error(data.error || data.message || '保存失败')
         config.value = data.config
+        permissionUsers.value = data.userManagementUsers || []
         saved.value = true
     } catch (cause) {
         error.value = cause.message || '保存失败，请稍后重试'
@@ -164,6 +229,20 @@ watch(() => props.token, load, { immediate: true })
 .config-card-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
 .config-icon { display: grid; place-items: center; width: 42px; height: 42px; flex-shrink: 0; border-radius: 13px; color: var(--theme-color); background: rgba(var(--theme-color-rgb), .1); }
 .config-card h3 { margin: 0; font-size: 17px; }
+.permission-scope { padding: 15px 16px; margin-bottom: 20px; border: 1px solid rgba(var(--theme-color-rgb), .14); border-radius: 13px; background: rgba(var(--theme-color-rgb), .04); }
+.permission-scope strong { font-size: 13px; color: var(--theme-color); }
+.permission-scope p, .permission-note { margin: 7px 0 0; font-size: 12px; color: var(--secondary-text-color); line-height: 1.8; }
+.permission-add-row { display: flex; align-items: center; gap: 12px; margin-top: 10px; }
+.permission-add-row .text-input { flex: 1; }
+.permission-add-row button { flex-shrink: 0; }
+.permission-error { margin: 10px 0 0; font-size: 12px; color: #dc2626; }
+.permission-user-list { display: grid; gap: 10px; margin-top: 18px; }
+.permission-user { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 13px; border: 1px solid var(--border-color); border-radius: 13px; }
+.permission-avatar { display: grid; place-items: center; width: 36px; height: 36px; flex-shrink: 0; border-radius: 50%; color: var(--theme-color); background: rgba(var(--theme-color-rgb), .08); }
+.permission-user > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.permission-user strong { display: block; font-size: 13px; }
+.permission-user small { display: block; margin-top: 4px; color: var(--secondary-text-color); font-size: 11px; }
+.permission-note { margin-top: 16px; }
 .config-card-heading p, .config-subheading p { margin: 5px 0 0; font-size: 12px; color: var(--secondary-text-color); line-height: 1.7; }
 .tag-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
 .tag-editor, .suggestion-editor { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -210,5 +289,6 @@ watch(() => props.token, load, { immediate: true })
     .config-field span { flex-wrap: wrap; }
     .config-footer { padding: 16px 18px; }
     .config-footer .primary-button { width: 100%; }
+    .permission-add-row { align-items: stretch; flex-direction: column; }
 }
 </style>

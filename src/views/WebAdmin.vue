@@ -4,10 +4,10 @@
         <div class="page-stack admin-page-stack">
 
             <!-- 无权限 -->
-            <div v-if="!isAdmin" class="no-permission-card">
+            <div v-if="!canAccessAdmin" class="no-permission-card">
                 <div class="no-perm-icon">⛔</div>
                 <h2>无访问权限</h2>
-                <p>当前账号没有网站管理员权限。</p>
+                <p>当前账号没有网站管理权限。</p>
                 <button class="primary-button" @click="$router.push('/')">返回主页</button>
             </div>
 
@@ -41,7 +41,7 @@
                 </div>
 
                 <!-- ── 结算管理 ── -->
-                <template v-if="mainTab === 'billing'">
+                <template v-if="isAdmin && mainTab === 'billing'">
                     <!-- 结算列表 -->
                     <div v-if="billingTab === 'history'" class="panel-card">
                         <div class="section-header">
@@ -367,7 +367,7 @@
                 </template>
 
                 <!-- ── 提供商管理 ── -->
-                <template v-if="mainTab === 'providers'">
+                <template v-if="isAdmin && mainTab === 'providers'">
                     <div class="panel-card">
                         <div class="section-header">
                             <h2 class="section-title">创建提供商</h2>
@@ -401,16 +401,16 @@
                 </template>
 
                 <!-- ── 社区审核 ── -->
-                <template v-if="mainTab === 'review'">
+                <template v-if="isAdmin && mainTab === 'review'">
                     <WebAdminTemplateReviewPanel :token="token" />
                 </template>
 
-                <WebAdminSiteConfigPanel v-if="mainTab === 'site-config'" :token="token" />
+                <WebAdminSiteConfigPanel v-if="isAdmin && mainTab === 'site-config'" :token="token" />
 
                 </main>
                 </div>
 
-            </template><!-- end v-else isAdmin -->
+            </template><!-- end v-else canAccessAdmin -->
         </div><!-- end page-stack -->
     </div><!-- end page-shell -->
 
@@ -432,13 +432,14 @@ const route = useRoute()
 const router = useRouter()
 const token = computed(() => state.token)
 const isAdmin = computed(() => state.user?.is_admin === true)
+const canAccessAdmin = computed(() => isAdmin.value || state.user?.can_manage_users === true)
 
 // ── 管理页面导航 ──────────────────────────────────────────────────────────────
 const mainTab = ref('billing')
 const billingTab = ref('history')
 const usersTab = ref('orders')
 
-const navigationGroups = [
+const allNavigationGroups = [
     { label: '结算', icon: 'fa-solid fa-wallet', items: [
         { section: 'billing', tab: 'history', label: '结算列表', icon: 'fa-solid fa-file-invoice-dollar' },
         { section: 'billing', tab: 'unsettled', label: '未结算清单', icon: 'fa-solid fa-list-check' },
@@ -455,11 +456,13 @@ const navigationGroups = [
         { section: 'site-config', label: '网站配置', icon: 'fa-solid fa-gear' },
     ] },
 ]
+const navigationGroups = computed(() => allNavigationGroups.filter(group =>
+    isAdmin.value || group.items.every(item => item.section === 'users')))
 
 const billingTabs = ['history', 'unsettled']
 const userTabs = ['orders', 'list', 'cache', 'records']
-const categories = ['billing', 'users', 'providers', 'review', 'site-config']
-const currentPageLabel = computed(() => navigationGroups.flatMap(group => group.items)
+const categories = computed(() => navigationGroups.value.flatMap(group => group.items.map(item => item.section)))
+const currentPageLabel = computed(() => navigationGroups.value.flatMap(group => group.items)
     .find(item => isActiveNav(item))?.label || '网站管理')
 
 function adminTo(item) {
@@ -505,7 +508,13 @@ function providerName(uuid) {
 }
 
 async function ensureProviders() {
-    if (!providersLoaded) await loadProviders()
+    if (providersLoaded) return
+    if (isAdmin.value) return loadProviders()
+    const d = await api('/users/provider-names')
+    if (d.ok) {
+        providers.value = d.providers
+        providersLoaded = true
+    }
 }
 
 // ── 计费日志 ───────────────────────────────────────────────────────────────
@@ -814,9 +823,9 @@ async function unbindUser(uuid, user_id) {
 }
 
 // ── 初始化 ─────────────────────────────────────────────────────────────────
-watch(() => [route.params.section, route.params.tab, isAdmin.value], ([section, tab, allowed]) => {
+watch(() => [route.params.section, route.params.tab, canAccessAdmin.value, isAdmin.value, token.value], ([section, tab, allowed]) => {
     if (!allowed) return
-    const nextSection = categories.includes(section) ? section : 'billing'
+    const nextSection = categories.value.includes(section) ? section : (isAdmin.value ? 'billing' : 'users')
     const nextTab = nextSection === 'billing'
         ? (billingTabs.includes(tab) ? tab : 'history')
         : nextSection === 'users'
@@ -835,6 +844,7 @@ watch(() => [route.params.section, route.params.tab, isAdmin.value], ([section, 
         if (billingTab.value === 'history') loadBillingHistory()
         else loadUnsettled()
     } else if (mainTab.value === 'users') {
+        if (usersTab.value === 'cache' || usersTab.value === 'records') ensureProviders()
         if (usersTab.value === 'orders') loadOrders()
         else if (usersTab.value === 'list') loadUsers()
         else if (usersTab.value === 'cache') loadCache()
